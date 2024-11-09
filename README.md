@@ -30,3 +30,115 @@
 
 [Read the documentation!](https://phil65.github.io/epregistry/)
 
+## Overview
+
+The Entry Point Registry system provides a convenient way to manage and access Python entry points. It's particularly useful when you need to work with plugins, extensions, or any modular components in your Python applications.
+
+## Basic Usage
+
+### Creating a Registry
+
+To start using the registry, create an instance for a specific entry point group:
+
+```python
+from epregistry import EntryPointRegistry
+
+# Create a registry for console scripts
+registry = EntryPointRegistry[Callable]("console_scripts")
+```
+
+!!! tip "Type Hints"
+    Use the generic type parameter to specify the expected type of your entry points. For example, `EntryPointRegistry[Callable]` indicates that the entry points are callable objects.
+
+### Accessing Entry Points
+
+#### Get a Single Entry Point
+
+```python
+# Get an entry point (returns None if not found)
+entry_point = registry.get("script_name")
+
+# Get and load an entry point (returns None if not found)
+loaded_entry_point = registry.load("script_name")
+
+# Get an entry point with exception handling
+try:
+    entry_point = registry["script_name"]
+except KeyError:
+    print("Entry point not found")
+```
+
+#### Working with Multiple Entry Points
+
+```python
+# Get all entry point names
+names = registry.names()
+
+# Get all entry points as a dictionary
+# -> dict[str, EntryPoint]
+all_entry_points = registry.get_all()
+
+# Load all entry points
+# -> dict[str, Callable] (or whatever type you specified)
+loaded_points = registry.load_all()
+```
+
+### Checking Entry Points
+
+```python
+# Check if an entry point exists
+if "script_name" in registry:
+    print("Entry point exists")
+
+# Get the total number of entry points
+count = len(registry)
+
+# Iterate over all entry points
+for entry_point in registry:
+    print(entry_point.name)
+```
+
+## Advanced Features
+
+### Metadata Access
+
+Retrieve detailed information about an entry point:
+
+```python
+metadata = registry.get_metadata("script_name")
+print(f"Module: {metadata['module']}")
+print(f"Attribute: {metadata['attr']}")
+print(f"Distribution: {metadata['dist']}")
+print(f"Version: {metadata['version']}")
+```
+
+### Extension Point Directory
+
+Find the installation directory of an extension point:
+
+```python
+directory = registry.get_extension_point_dir("script_name")
+print(f"Extension is installed at: {directory}")
+```
+
+### Available Groups
+
+Get a list of all available entry point groups in the system:
+
+```python
+from epregistry import available_groups
+
+groups = available_groups()
+print("Available entry point groups:", groups)
+```
+
+## Integration with Package Management
+
+The Entry Point Registry integrates with Python's [`importlib.metadata`](https://docs.python.org/3/library/importlib.metadata.html) system, making it compatible with:
+
+- [!{octicons-package-16} setuptools](https://setuptools.pypa.io/en/latest/) entry points
+- [!{octicons-package-16} poetry](https://python-poetry.org/) entry points
+- Other packaging tools that follow the entry points specification
+
+!!! note "Automatic Caching"
+    The registry implements automatic caching of entry points for better performance. The cache is initialized on first use and shared across all registry instances.
