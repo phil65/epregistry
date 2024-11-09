@@ -16,7 +16,7 @@ def _get_normalized_pkg_dist_map() -> dict[str, str]:
     Returns:
         A dictionary mapping normalized package names to their distribution names.
     """
-    result = {}
+    result: dict[str, str] = {}
     for pkg, dists in _get_packages_distributions().items():
         # Handle both prefixed and unprefixed package names
         normalized_pkg = pkg.lower().replace("-", "_")
