@@ -48,9 +48,22 @@ class EntryPointRegistry(Generic[T]):
             group: The entry point group to manage.
         """
         self.group = group
-        # Ensure the group exists in the cache
+        # Initialize instance cache
+        self._cache: dict[str, EntryPoint] | None = None
+        # Ensure the group exists in the global cache
         if self.group not in self._get_cache():
             self._get_cache()[self.group] = {}
+
+    @property
+    def cache(self) -> dict[str, EntryPoint]:
+        """Get the instance cache of entry points.
+
+        Returns:
+            dict: Mapping of entry point names to EntryPoint objects.
+        """
+        if self._cache is None:
+            self._cache = self._get_cache()[self.group]
+        return self._cache
 
     @staticmethod
     def _get_cache() -> dict[str, dict[str, EntryPoint]]:
@@ -73,7 +86,7 @@ class EntryPointRegistry(Generic[T]):
         Returns:
             The entry point if found, None otherwise.
         """
-        return self._get_cache()[self.group].get(name)
+        return self.cache.get(name)
 
     def load(self, name: str) -> T | None:
         """Load an entry point by name.
@@ -100,7 +113,7 @@ class EntryPointRegistry(Generic[T]):
             KeyError: If the entry point is not found.
         """
         try:
-            return self._get_cache()[self.group][name]
+            return self.cache[name]
         except KeyError as e:
             msg = f"No entry point named {name!r} found in group {self.group!r}"
             raise KeyError(msg) from e
@@ -111,7 +124,7 @@ class EntryPointRegistry(Generic[T]):
         Returns:
             Iterator of entry point names.
         """
-        return iter(self._get_cache()[self.group].values())
+        return iter(self.cache.values())
 
     def __len__(self) -> int:
         """Get the number of available entry points.
@@ -119,20 +132,20 @@ class EntryPointRegistry(Generic[T]):
         Returns:
             The number of entry points in this registry.
         """
-        return len(self._get_cache()[self.group])
+        return len(self.cache)
 
     def __contains__(self, ep: str | EntryPoint) -> bool:
         """Check if an entry point name exists.
 
         Args:
-            ep: The name / EntrPoint object to check.
+            ep: The name / EntryPoint object to check.
 
         Returns:
             True if the entry point exists, False otherwise.
         """
         if isinstance(ep, str):
-            return ep in self._get_cache()[self.group]
-        return ep in self._get_cache()[self.group].values()
+            return ep in self.cache
+        return ep in self.cache.values()
 
     def names(self) -> list[str]:
         """Get a list of all available entry point names.
@@ -140,7 +153,7 @@ class EntryPointRegistry(Generic[T]):
         Returns:
             List of entry point names.
         """
-        return list(self._get_cache()[self.group].keys())
+        return list(self.cache.keys())
 
     def get_all(self) -> dict[str, EntryPoint]:
         """Get all entry points as a dictionary.
@@ -148,7 +161,7 @@ class EntryPointRegistry(Generic[T]):
         Returns:
             Dictionary mapping entry point names to entry points.
         """
-        return self._get_cache()[self.group]
+        return self.cache
 
     def load_all(self) -> dict[str, T]:
         """Load all entry points.
