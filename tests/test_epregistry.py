@@ -92,7 +92,7 @@ def test_available_groups():
 def test_get_metadata(registry: EntryPointRegistry[Callable[..., Any]]):
     """Test getting entry point metadata."""
     if len(registry) > 0:
-        name = next(iter(registry))
+        name = next(iter(registry)).name
         metadata = registry.get_metadata(name)
         assert isinstance(metadata, dict)
         assert "module" in metadata

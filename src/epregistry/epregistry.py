@@ -4,6 +4,7 @@ from collections import defaultdict
 from collections.abc import Callable, Iterator
 from functools import cache
 from importlib.metadata import EntryPoint, entry_points
+import pathlib
 from typing import Any, Generic, TypeVar
 
 
@@ -104,13 +105,13 @@ class EntryPointRegistry(Generic[T]):
             msg = f"No entry point named {name!r} found in group {self.group!r}"
             raise KeyError(msg) from e
 
-    def __iter__(self) -> Iterator[str]:
+    def __iter__(self) -> Iterator[EntryPoint]:
         """Iterate over entry point names.
 
         Returns:
             Iterator of entry point names.
         """
-        return iter(self._get_cache()[self.group])
+        return iter(self._get_cache()[self.group].values())
 
     def __len__(self) -> int:
         """Get the number of available entry points.
@@ -120,16 +121,18 @@ class EntryPointRegistry(Generic[T]):
         """
         return len(self._get_cache()[self.group])
 
-    def __contains__(self, name: str) -> bool:
+    def __contains__(self, ep: str | EntryPoint) -> bool:
         """Check if an entry point name exists.
 
         Args:
-            name: The name to check.
+            ep: The name / EntrPoint object to check.
 
         Returns:
             True if the entry point exists, False otherwise.
         """
-        return name in self._get_cache()[self.group]
+        if isinstance(ep, str):
+            return ep in self._get_cache()[self.group]
+        return ep in self._get_cache()[self.group].values()
 
     def names(self) -> list[str]:
         """Get a list of all available entry point names.
@@ -168,6 +171,14 @@ class EntryPointRegistry(Generic[T]):
             "version": ep.dist.version if ep.dist else None,
         }
 
+    def get_extension_point_dir(self, name: str) -> pathlib.Path:
+        """Return the directory of an installed extension point object by name."""
+        ep = self.load(name)
+        assert ep
+        assert hasattr(ep, "__file__")
+        path = pathlib.Path(ep.__file__).resolve()
+        return path.parent
+
 
 def available_groups() -> list[str]:
     """Get a list of all available entry point groups.
@@ -184,7 +195,7 @@ if __name__ == "__main__":
 
     # Print available console scripts
     print("Available console scripts:")
-    for name in registry.names():
+    for name in registry:
         print(f"- {name}")
 
     print(f"\nTotal scripts: {len(registry)}")
