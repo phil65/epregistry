@@ -47,8 +47,8 @@ from epregistry import EntryPointRegistry
 registry = EntryPointRegistry[Callable]("console_scripts")
 ```
 
-!!! tip "Type Hints"
-    Use the generic type parameter to specify the expected type of your entry points. For example, `EntryPointRegistry[Callable]` indicates that the entry points are callable objects.
+> **💡 Tip: Type Hints**
+> Use the generic type parameter to specify the expected type of your entry points. For example, `EntryPointRegistry[Callable]` indicates that the entry points are callable objects.
 
 ### Accessing Entry Points
 
@@ -136,9 +136,9 @@ print("Available entry point groups:", groups)
 
 The Entry Point Registry integrates with Python's [`importlib.metadata`](https://docs.python.org/3/library/importlib.metadata.html) system, making it compatible with:
 
-- [!{octicons-package-16} setuptools](https://setuptools.pypa.io/en/latest/) entry points
-- [!{octicons-package-16} poetry](https://python-poetry.org/) entry points
+- [📦 setuptools](https://setuptools.pypa.io/en/latest/)
+- [📦 poetry](https://python-poetry.org/)
 - Other packaging tools that follow the entry points specification
 
-!!! note "Automatic Caching"
-    The registry implements automatic caching of entry points for better performance. The cache is initialized on first use and shared across all registry instances.
+> **📝 Note: Automatic Caching**
+> The registry implements automatic caching of entry points for better performance. The cache is initialized on first use and shared across all registry instances.
