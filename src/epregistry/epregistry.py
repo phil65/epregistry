@@ -1,5 +1,7 @@
 """Module for managing entry points through a registry system."""
 
+from __future__ import annotations
+
 from collections import defaultdict
 from collections.abc import Callable, Iterator
 from functools import cache
