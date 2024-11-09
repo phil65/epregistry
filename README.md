@@ -191,6 +191,23 @@ distributions = list_distributions()
 print("Available distributions:", distributions)
 ```
 
+## Package and Distribution Name Conversion
+
+The package also contain some helpers to convert between package and distribution names.
+The mapping in this case is also cached, only the first conversion may take long to build the index.
+
+```python
+from epregistry import package_to_distribution, distribution_to_package
+
+# Convert package name to distribution
+dist_name = package_to_distribution("PIL")  # Returns 'Pillow'
+dist_name = package_to_distribution("requests")  # Returns 'requests'
+
+# Convert distribution to primary package
+pkg_name = distribution_to_package("Pillow")  # Returns 'PIL'
+pkg_name = distribution_to_package("requests")  # Returns 'requests'
+```
+
 > **💡 Tip: Filtering Patterns**
 > The filtering system supports wildcards:
 > - `*` matches any number of characters
