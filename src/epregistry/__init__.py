@@ -1,4 +1,4 @@
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 from epregistry.epregistry import EntryPointRegistry, available_groups
 from importlib.metadata import EntryPoint
