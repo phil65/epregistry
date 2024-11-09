@@ -5,12 +5,12 @@ import pytest
 from epregistry.package_to_distribution import (
     _get_normalized_dist_pkg_map,
     _get_normalized_pkg_dist_map,
-    _get_packages_distributions,
     clear_caches,
     distribution_to_package,
     distribution_to_packages,
     get_cache_info,
     package_to_distribution,
+    package_to_distributions,
 )
 
 
@@ -167,6 +167,6 @@ def test_invalid_input_types(invalid_input):
 
 def test_internal_mapping_types():
     """Test that internal mapping functions return correct types."""
-    assert isinstance(_get_packages_distributions(), dict)
+    assert isinstance(package_to_distributions(), dict)
     assert isinstance(_get_normalized_pkg_dist_map(), dict)
     assert isinstance(_get_normalized_dist_pkg_map(), dict)

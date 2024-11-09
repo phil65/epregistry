@@ -4,12 +4,6 @@ from importlib.metadata import packages_distributions
 
 
 @cache
-def _get_packages_distributions() -> Mapping[str, list[str]]:
-    """Cache the packages_distributions mapping."""
-    return packages_distributions()
-
-
-@cache
 def _get_normalized_pkg_dist_map() -> dict[str, str]:
     """Cache the normalized package to distribution mapping.
 
@@ -17,7 +11,7 @@ def _get_normalized_pkg_dist_map() -> dict[str, str]:
         A dictionary mapping normalized package names to their distribution names.
     """
     result: dict[str, str] = {}
-    for pkg, dists in _get_packages_distributions().items():
+    for pkg, dists in package_to_distributions().items():
         # Handle both prefixed and unprefixed package names
         normalized_pkg = pkg.lower().replace("-", "_")
         # Remove leading underscore if present for mapping
@@ -36,7 +30,7 @@ def _get_normalized_dist_pkg_map() -> dict[str, set[str]]:
         A dictionary mapping normalized distribution names to sets of package names.
     """
     result: dict[str, set[str]] = {}
-    for pkg, dists in _get_packages_distributions().items():
+    for pkg, dists in package_to_distributions().items():
         for dist in dists:
             normalized_dist = dist.lower().replace("-", "_")
             if normalized_dist not in result:
@@ -45,6 +39,24 @@ def _get_normalized_dist_pkg_map() -> dict[str, set[str]]:
             clean_pkg = pkg.lstrip("_")
             result[normalized_dist].add(clean_pkg)
     return result
+
+
+@cache
+def package_to_distributions() -> Mapping[str, list[str]]:
+    """Get and cache the packages to distributions mapping.
+
+    Returns:
+        A mapping of package names to their distribution names.
+        This is a cached version of importlib.metadata.packages_distributions()
+
+    Example:
+        >>> mapping = package_to_distributions()
+        >>> mapping['PIL']
+        ['Pillow']
+        >>> mapping['zope.interface']
+        ['zope.interface']
+    """
+    return packages_distributions()
 
 
 @lru_cache(maxsize=1024)
@@ -70,7 +82,7 @@ def package_to_distribution(package_name: str) -> str | None:
         raise TypeError(msg)
 
     # First try direct lookup
-    pkg_dist_map = _get_packages_distributions()
+    pkg_dist_map = package_to_distributions()
     if package_name in pkg_dist_map:
         return pkg_dist_map[package_name][0]
 
@@ -151,7 +163,7 @@ def clear_caches() -> None:
     Example:
         >>> clear_caches()  # Clear all cached mappings
     """
-    _get_packages_distributions.cache_clear()
+    package_to_distributions.cache_clear()
     _get_normalized_pkg_dist_map.cache_clear()
     _get_normalized_dist_pkg_map.cache_clear()
     package_to_distribution.cache_clear()
@@ -171,7 +183,7 @@ def get_cache_info() -> dict[str, str]:
         'CacheInfo(hits=42, misses=10, maxsize=1024, currsize=10)'
     """
     return {
-        "packages_distributions": str(_get_packages_distributions.cache_info()),
+        "packages_distributions": str(package_to_distributions.cache_info()),
         "normalized_pkg_dist_map": str(_get_normalized_pkg_dist_map.cache_info()),
         "normalized_dist_pkg_map": str(_get_normalized_dist_pkg_map.cache_info()),
         "package_to_distribution": str(package_to_distribution.cache_info()),
