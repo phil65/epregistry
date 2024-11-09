@@ -204,6 +204,124 @@ def available_groups() -> list[str]:
     return list(EntryPointRegistry._get_cache().keys())
 
 
+def filter_entry_points(
+    group: str | None = None,
+    distribution: str | None = None,
+    name_pattern: str | None = None,
+) -> dict[str, dict[str, EntryPoint]]:
+    """Filter entry points based on specified criteria.
+
+    Args:
+        group: Optional group name to filter by
+        distribution: Optional distribution name to filter by
+        name_pattern: Optional string pattern to match against entry point names
+            (supports simple wildcards: * and ?)
+
+    Returns:
+        Filtered dictionary of entry points maintaining the same structure as the cache
+    """
+    cache = EntryPointRegistry._get_cache()
+    result: dict[str, dict[str, EntryPoint]] = {}
+
+    def match_pattern(text: str, pattern: str) -> bool:
+        """Simple pattern matching supporting * and ? wildcards."""
+        import fnmatch
+
+        return fnmatch.fnmatch(text.lower(), pattern.lower())
+
+    for group_name, group_eps in cache.items():
+        # Filter by group if specified
+        if group and not match_pattern(group_name, group):
+            continue
+
+        filtered_eps = {}
+        for ep_name, ep in group_eps.items():
+            # Filter by distribution if specified
+            if distribution and not (
+                ep.dist and match_pattern(ep.dist.metadata["Name"], distribution)
+            ):
+                continue
+
+            # Filter by name pattern if specified
+            if name_pattern and not match_pattern(ep_name, name_pattern):
+                continue
+
+            filtered_eps[ep_name] = ep
+
+        if filtered_eps:
+            result[group_name] = filtered_eps
+
+    return result
+
+
+def search_entry_points(
+    query: str,
+    include_groups: bool = True,
+    include_names: bool = True,
+    include_distributions: bool = True,
+) -> dict[str, dict[str, EntryPoint]]:
+    """Search entry points using a general query string.
+
+    Args:
+        query: Search string to match against entry points
+        include_groups: Whether to search in group names
+        include_names: Whether to search in entry point names
+        include_distributions: Whether to search in distribution names
+
+    Returns:
+        Dictionary of matching entry points
+    """
+    cache = EntryPointRegistry._get_cache()
+    result: dict[str, dict[str, EntryPoint]] = {}
+    query = query.lower()
+
+    for group_name, group_eps in cache.items():
+        matching_eps = {}
+
+        # Check group name
+        group_matches = include_groups and query in group_name.lower()
+
+        for ep_name, ep in group_eps.items():
+            matches = False
+
+            # Check entry point name
+            if include_names and query in ep_name.lower():
+                matches = True
+
+            # Check distribution name
+            if (
+                include_distributions
+                and ep.dist
+                and query in ep.dist.metadata["Name"].lower()
+            ):
+                matches = True
+
+            if matches or group_matches:
+                matching_eps[ep_name] = ep
+
+        if matching_eps:
+            result[group_name] = matching_eps
+
+    return result
+
+
+def list_distributions() -> set[str]:
+    """Get a set of all unique distribution names that provide entry points.
+
+    Returns:
+        Set of distribution names
+    """
+    distributions = set()
+    cache = EntryPointRegistry._get_cache()
+
+    for group_eps in cache.values():
+        for ep in group_eps.values():
+            if ep.dist:
+                distributions.add(ep.dist.metadata["Name"])
+
+    return distributions
+
+
 if __name__ == "__main__":
     # Create a registry for console scripts
     registry = EntryPointRegistry[Callable]("console_scripts")

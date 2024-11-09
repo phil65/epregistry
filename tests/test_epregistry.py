@@ -12,12 +12,6 @@ NONEXISTENT_GROUP = "nonexistent.group"
 NONEXISTENT_NAME = "nonexistent.name"
 
 
-@pytest.fixture
-def registry() -> EntryPointRegistry[Callable[..., Any]]:
-    """Create a registry using console_scripts group."""
-    return EntryPointRegistry[Callable[..., Any]](CONSOLE_SCRIPTS)
-
-
 def test_registry_initialization():
     """Test basic registry initialization."""
     registry = EntryPointRegistry[Any](CONSOLE_SCRIPTS)

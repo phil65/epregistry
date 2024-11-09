@@ -132,6 +132,78 @@ groups = available_groups()
 print("Available entry point groups:", groups)
 ```
 
+### Filtering and Searching
+
+The Entry Point Registry provides powerful filtering and search capabilities to help you find specific entry points.
+
+#### Filtering Entry Points
+
+Filter entry points based on group, distribution, or name patterns:
+
+```python
+from epregistry import filter_entry_points
+
+# Filter by group
+flask_eps = filter_entry_points(group="flask.*")
+
+# Filter by distribution
+pytest_eps = filter_entry_points(distribution="pytest")
+
+# Filter by name pattern (supports * and ? wildcards)
+test_eps = filter_entry_points(name_pattern="test_*")
+
+# Combine multiple filters
+specific_eps = filter_entry_points(
+    group="pytest11",
+    distribution="pytest",
+    name_pattern="*fixture*"
+)
+```
+
+#### Searching Entry Points
+
+Search across all entry points using a general query:
+
+```python
+from epregistry import search_entry_points
+
+# Search everywhere
+sql_related = search_entry_points("sql")
+
+# Search with specific scope
+results = search_entry_points(
+    "test",
+    include_groups=True,      # Search in group names
+    include_names=True,       # Search in entry point names
+    include_distributions=True # Search in distribution names
+)
+```
+
+#### List Available Distributions
+
+Get a list of all distributions that provide entry points:
+
+```python
+from epregistry import list_distributions
+
+# Get all distributions with entry points
+distributions = list_distributions()
+print("Available distributions:", distributions)
+```
+
+> **💡 Tip: Filtering Patterns**
+> The filtering system supports wildcards:
+> - `*` matches any number of characters
+> - `?` matches exactly one character
+> - Patterns are case-insensitive
+
+These search and filtering capabilities are particularly useful when:
+- Exploring available plugins in a large system
+- Debugging entry point configurations
+- Building plugin management interfaces
+- Finding specific extensions across multiple packages
+
+
 ## Integration with Package Management
 
 The Entry Point Registry integrates with Python's [`importlib.metadata`](https://docs.python.org/3/library/importlib.metadata.html) system, making it compatible with:
