@@ -46,7 +46,7 @@ class ModuleEntryPointRegistry(Generic[T]):
         module: The module name to filter entry points by.
     """
 
-    def __init__(self, module: str):
+    def __init__(self, module: str | None = None):
         """Initialize the registry for a specific module.
 
         Args:
