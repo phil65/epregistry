@@ -9,6 +9,12 @@ from epregistry.epregistry import (
     search_entry_points,
     list_distributions,
 )
+from epregistry.package_to_distribution import (
+    package_to_distributions,
+    package_to_distribution,
+    distribution_to_packages,
+    distribution_to_package,
+)
 
 
 __all__ = [
@@ -19,4 +25,8 @@ __all__ = [
     "filter_entry_points",
     "search_entry_points",
     "list_distributions",
+    "package_to_distributions",
+    "package_to_distribution",
+    "distribution_to_packages",
+    "distribution_to_package",
 ]
