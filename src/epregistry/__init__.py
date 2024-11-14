@@ -14,6 +14,7 @@ from epregistry.package_to_distribution import (
     package_to_distribution,
     distribution_to_packages,
     distribution_to_package,
+    get_packages_distributions,
 )
 
 
@@ -29,4 +30,5 @@ __all__ = [
     "package_to_distribution",
     "distribution_to_packages",
     "distribution_to_package",
+    "get_packages_distributions",
 ]

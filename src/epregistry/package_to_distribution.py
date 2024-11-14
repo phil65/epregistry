@@ -4,7 +4,7 @@ from importlib.metadata import packages_distributions
 
 
 @cache
-def _get_packages_distributions() -> Mapping[str, list[str]]:
+def get_packages_distributions() -> Mapping[str, list[str]]:
     """Cached call for packages_distributions."""
     return packages_distributions()
 
@@ -17,7 +17,7 @@ def _get_normalized_pkg_dist_map() -> dict[str, str]:
         A dictionary mapping normalized package names to their distribution names.
     """
     result: dict[str, str] = {}
-    for pkg, dists in _get_packages_distributions().items():
+    for pkg, dists in get_packages_distributions().items():
         # Handle both prefixed and unprefixed package names
         normalized_pkg = pkg.lower().replace("-", "_")
         # Remove leading underscore if present for mapping
@@ -36,7 +36,7 @@ def _get_normalized_dist_pkg_map() -> dict[str, set[str]]:
         A dictionary mapping normalized distribution names to sets of package names.
     """
     result: dict[str, set[str]] = {}
-    for pkg, dists in _get_packages_distributions().items():
+    for pkg, dists in get_packages_distributions().items():
         for dist in dists:
             normalized_dist = dist.lower().replace("-", "_")
             if normalized_dist not in result:
@@ -69,7 +69,7 @@ def package_to_distributions(package_name: str) -> list[str] | None:
         For namespace packages (like 'zope'), returns all related distributions.
         This is particularly useful for examining namespace package relationships.
     """
-    pkg_dist_map = _get_packages_distributions()
+    pkg_dist_map = get_packages_distributions()
     return pkg_dist_map.get(package_name)
 
 
@@ -96,7 +96,7 @@ def package_to_distribution(package_name: str) -> str | None:
         raise TypeError(msg)
 
     # First try direct lookup
-    pkg_dist_map = _get_packages_distributions()
+    pkg_dist_map = get_packages_distributions()
     if package_name in pkg_dist_map:
         return pkg_dist_map[package_name][0]
 
@@ -179,7 +179,7 @@ def clear_caches() -> None:
     """
     _get_normalized_pkg_dist_map.cache_clear()
     _get_normalized_dist_pkg_map.cache_clear()
-    _get_packages_distributions.cache_clear()
+    get_packages_distributions.cache_clear()
     package_to_distributions.cache_clear()
     package_to_distribution.cache_clear()
     distribution_to_package.cache_clear()
@@ -200,7 +200,7 @@ def get_cache_info() -> dict[str, str]:
     return {
         "normalized_pkg_dist_map": str(_get_normalized_pkg_dist_map.cache_info()),
         "normalized_dist_pkg_map": str(_get_normalized_dist_pkg_map.cache_info()),
-        "get_packages_distributions": str(_get_packages_distributions.cache_info()),
+        "get_packages_distributions": str(get_packages_distributions.cache_info()),
         "package_to_distribution": str(package_to_distribution.cache_info()),
         "package_to_distributions": str(package_to_distributions.cache_info()),
         "distribution_to_package": str(distribution_to_package.cache_info()),
