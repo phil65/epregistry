@@ -1,4 +1,4 @@
-__version__ = "1.1.4"
+__version__ = "1.1.5"
 
 from importlib.metadata import EntryPoint
 from epregistry.epregistry import (
