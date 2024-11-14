@@ -10,7 +10,9 @@ build-backend = "hatchling.build"
 [project]
 name = "epregistry"
 description = "A registry for entry points (cached and generically typed)"
-authors = [{name = "Philipp Temminghoff", email = "philipptemminghoff@googlemail.com"}]
+authors = [
+    { name = "Philipp Temminghoff", email = "philipptemminghoff@googlemail.com" },
+]
 readme = "README.md"
 dynamic = ["version"]
 classifiers = [
@@ -31,10 +33,10 @@ classifiers = [
 keywords = []
 requires-python = ">=3.12"
 dependencies = []
-license = {file = "LICENSE"}
+license = { file = "LICENSE" }
 
 [tool.uv]
-default-groups = ["lint", "docs"]
+default-groups = ["dev", "lint", "docs"]
 
 [dependency-groups]
 dev = ["pytest", "pytest-cov", "pyreadline3"]
