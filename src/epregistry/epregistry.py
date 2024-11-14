@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Callable, Iterator
 from functools import cache
 from importlib.metadata import EntryPoint, entry_points
 import pathlib
-from typing import Any, Generic, TypeVar
+from typing import TYPE_CHECKING, Any, Generic, TypeVar
+
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 
 T = TypeVar("T")
@@ -28,6 +31,101 @@ def _initialize_cache() -> dict[str, dict[str, EntryPoint]]:
     for ep in entry_points():
         all_entry_points[ep.group][ep.name] = ep
     return dict(all_entry_points)
+
+
+class ModuleEntryPointRegistry(Generic[T]):
+    """A registry for managing entry points organized by their module names.
+
+    This class provides an interface to work with entry points grouped by their
+    source modules. It shares the same global cache as EntryPointRegistry but
+    presents a different view of the data.
+
+    Attributes:
+        module: The module name to filter entry points by.
+    """
+
+    def __init__(self, module: str):
+        """Initialize the registry for a specific module.
+
+        Args:
+            module: The module name to manage entry points for.
+        """
+        self.module = module
+        self._cache: dict[str, list[EntryPoint]] | None = None
+
+    @property
+    def cache(self) -> dict[str, list[EntryPoint]]:
+        """Get the module-specific cache of entry points."""
+        if self._cache is None:
+            self._build_cache()
+        assert self._cache is not None
+        return self._cache
+
+    def _build_cache(self) -> None:
+        """Build the module-specific cache from the global entry point cache."""
+        result: defaultdict[str, list[EntryPoint]] = defaultdict(list)
+        global_cache = self._get_cache()
+
+        for group_eps in global_cache.values():
+            for ep in group_eps.values():
+                if ep.module == self.module:
+                    result[ep.group].append(ep)
+
+        self._cache = dict(result)
+
+    @staticmethod
+    def _get_cache() -> dict[str, dict[str, EntryPoint]]:
+        """Get or initialize the global entry point cache."""
+        global _entry_point_cache
+        if _entry_point_cache is None:
+            _entry_point_cache = _initialize_cache()
+        return _entry_point_cache
+
+    def groups(self) -> list[str]:
+        """Get all groups that contain entry points from this module."""
+        return list(self.cache.keys())
+
+    def get_group(self, group: str) -> list[EntryPoint]:
+        """Get all entry points for a specific group from this module.
+
+        Args:
+            group: The entry point group name.
+
+        Returns:
+            List of entry points in the specified group.
+        """
+        return self.cache.get(group, [])
+
+    def load_group(self, group: str) -> list[T]:
+        """Load all entry points for a specific group from this module.
+
+        Args:
+            group: The entry point group name.
+
+        Returns:
+            List of loaded entry points.
+        """
+        return [ep.load() for ep in self.get_group(group)]
+
+    def __iter__(self) -> Iterator[tuple[str, list[EntryPoint]]]:
+        """Iterate over groups and their entry points."""
+        return iter(self.cache.items())
+
+    def __len__(self) -> int:
+        """Get the total number of entry points across all groups."""
+        return sum(len(eps) for eps in self.cache.values())
+
+    def __contains__(self, group: str) -> bool:
+        """Check if the module has entry points in a specific group."""
+        return group in self.cache
+
+    def get_all(self) -> dict[str, list[EntryPoint]]:
+        """Get all entry points organized by group."""
+        return self.cache
+
+    def load_all(self) -> dict[str, list[T]]:
+        """Load all entry points, organized by group."""
+        return {group: [ep.load() for ep in eps] for group, eps in self.cache.items()}
 
 
 class EntryPointRegistry(Generic[T]):
@@ -324,11 +422,5 @@ def list_distributions() -> set[str]:
 
 if __name__ == "__main__":
     # Create a registry for console scripts
-    registry = EntryPointRegistry[Callable]("console_scripts")
-
-    # Print available console scripts
-    print("Available console scripts:")
-    for name in registry:
-        print(f"- {name}")
-
-    print(f"\nTotal scripts: {len(registry)}")
+    registry = ModuleEntryPointRegistry[Any]("pytest")
+    print(registry.get_all())

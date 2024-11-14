@@ -3,6 +3,7 @@ __version__ = "1.0.0"
 from importlib.metadata import EntryPoint
 from epregistry.epregistry import (
     EntryPointRegistry,
+    ModuleEntryPointRegistry,
     available_groups,
     filter_entry_points,
     search_entry_points,
@@ -13,6 +14,7 @@ from epregistry.epregistry import (
 __all__ = [
     "EntryPoint",
     "EntryPointRegistry",
+    "ModuleEntryPointRegistry",
     "available_groups",
     "filter_entry_points",
     "search_entry_points",

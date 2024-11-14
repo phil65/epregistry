@@ -32,27 +32,58 @@
 
 ## Overview
 
-The Entry Point Registry system provides a convenient way to manage and access Python entry points. It's particularly useful when you need to work with plugins, extensions, or any modular components in your Python applications.
+The Entry Point Registry system provides a convenient way to manage and access Python entry points. It offers two different approaches to work with entry points:
+- Group-based access: Work with all entry points in a specific group
+- Module-based access: Work with all entry points provided by a specific module
+
+This flexibility makes it particularly useful for plugin systems, extensions, or any modular components in Python applications.
 
 ## Basic Usage
 
-### Creating a Registry
+### Group-based Registry
 
-To start using the registry, create an instance for a specific entry point group:
+When you want to work with entry points organized by their group:
 
 ```python
 from epregistry import EntryPointRegistry
 
 # Create a registry for console scripts
 registry = EntryPointRegistry[Callable]("console_scripts")
+
+# Get and load an entry point
+script = registry.load("my-script")
+
+# Get all entry points in the group
+all_scripts = registry.get_all()
+```
+
+### Module-based Registry
+
+When you want to work with all entry points provided by a specific module:
+
+```python
+from epregistry import ModuleEntryPointRegistry
+
+# Create a registry for a specific module
+registry = ModuleEntryPointRegistry[Any]("your_module_name")
+
+# Get all groups that have entry points from this module
+groups = registry.groups()
+
+# Get entry points for a specific group
+group_eps = registry.get_group("console_scripts")
+
+# Load all entry points for a group
+loaded_eps = registry.load_group("console_scripts")
 ```
 
 > **💡 Tip: Type Hints**
-> Use the generic type parameter to specify the expected type of your entry points. For example, `EntryPointRegistry[Callable]` indicates that the entry points are callable objects.
+> Use the generic type parameter to specify the expected type of your entry points.
+> For example, `EntryPointRegistry[Callable]` indicates that the entry points are callable objects.
 
-### Accessing Entry Points
+### Working with Group-based Registry
 
-#### Get a Single Entry Point
+#### Get Entry Points
 
 ```python
 # Get an entry point (returns None if not found)
@@ -75,15 +106,39 @@ except KeyError:
 names = registry.names()
 
 # Get all entry points as a dictionary
-# -> dict[str, EntryPoint]
-all_entry_points = registry.get_all()
+all_entry_points = registry.get_all()  # dict[str, EntryPoint]
 
 # Load all entry points
-# -> dict[str, Callable] (or whatever type you specified)
-loaded_points = registry.load_all()
+loaded_points = registry.load_all()  # dict[str, T]
 ```
 
-### Checking Entry Points
+### Working with Module-based Registry
+
+#### Get Entry Points by Group
+
+```python
+# Get all entry points for a specific group
+eps = registry.get_group("console_scripts")
+
+# Load all entry points for a group
+loaded_eps = registry.load_group("console_scripts")
+
+```
+
+#### Access All Entry Points
+
+```python
+# Get all groups that contain entry points from this module
+groups = registry.groups()
+
+# Get all entry points organized by group
+all_eps = registry.get_all()  # dict[str, list[EntryPoint]]
+
+# Load all entry points from all groups
+loaded_eps = registry.load_all()  # dict[str, list[T]]
+```
+
+### Common Operations
 
 ```python
 # Check if an entry point exists
@@ -93,7 +148,7 @@ if "script_name" in registry:
 # Get the total number of entry points
 count = len(registry)
 
-# Iterate over all entry points
+# Iterate over entry points
 for entry_point in registry:
     print(entry_point.name)
 ```
@@ -102,9 +157,8 @@ for entry_point in registry:
 
 ### Metadata Access
 
-Retrieve detailed information about an entry point:
-
 ```python
+# For group-based registry
 metadata = registry.get_metadata("script_name")
 print(f"Module: {metadata['module']}")
 print(f"Attribute: {metadata['attr']}")
@@ -114,98 +168,41 @@ print(f"Version: {metadata['version']}")
 
 ### Extension Point Directory
 
-Find the installation directory of an extension point:
-
 ```python
+# For group-based registry
 directory = registry.get_extension_point_dir("script_name")
 print(f"Extension is installed at: {directory}")
+
 ```
 
-### Available Groups
-
-Get a list of all available entry point groups in the system:
+### Discovery and Search
 
 ```python
-from epregistry import available_groups
+from epregistry import (
+    available_groups,
+    filter_entry_points,
+    search_entry_points,
+    list_distributions,
+)
 
+# Get all available groups
 groups = available_groups()
-print("Available entry point groups:", groups)
-```
 
-### Filtering and Searching
-
-The Entry Point Registry provides powerful filtering and search capabilities to help you find specific entry points.
-
-#### Filtering Entry Points
-
-Filter entry points based on group, distribution, or name patterns:
-
-```python
-from epregistry import filter_entry_points
-
-# Filter by group
+# Filter entry points
 flask_eps = filter_entry_points(group="flask.*")
-
-# Filter by distribution
 pytest_eps = filter_entry_points(distribution="pytest")
-
-# Filter by name pattern (supports * and ? wildcards)
 test_eps = filter_entry_points(name_pattern="test_*")
 
-# Combine multiple filters
-specific_eps = filter_entry_points(
-    group="pytest11",
-    distribution="pytest",
-    name_pattern="*fixture*"
-)
-```
-
-#### Searching Entry Points
-
-Search across all entry points using a general query:
-
-```python
-from epregistry import search_entry_points
-
-# Search everywhere
-sql_related = search_entry_points("sql")
-
-# Search with specific scope
+# Search across all entry points
 results = search_entry_points(
     "test",
-    include_groups=True,      # Search in group names
-    include_names=True,       # Search in entry point names
-    include_distributions=True # Search in distribution names
+    include_groups=True,
+    include_names=True,
+    include_distributions=True
 )
-```
 
-#### List Available Distributions
-
-Get a list of all distributions that provide entry points:
-
-```python
-from epregistry import list_distributions
-
-# Get all distributions with entry points
+# List all distributions with entry points
 distributions = list_distributions()
-print("Available distributions:", distributions)
-```
-
-## Package and Distribution Name Conversion
-
-The package also contain some helpers to convert between package and distribution names.
-The mapping in this case is also cached, only the first conversion may take long to build the index.
-
-```python
-from epregistry import package_to_distribution, distribution_to_package
-
-# Convert package name to distribution
-dist_name = package_to_distribution("PIL")  # Returns 'Pillow'
-dist_name = package_to_distribution("requests")  # Returns 'requests'
-
-# Convert distribution to primary package
-pkg_name = distribution_to_package("Pillow")  # Returns 'PIL'
-pkg_name = distribution_to_package("requests")  # Returns 'requests'
 ```
 
 > **💡 Tip: Filtering Patterns**
@@ -213,13 +210,6 @@ pkg_name = distribution_to_package("requests")  # Returns 'requests'
 > - `*` matches any number of characters
 > - `?` matches exactly one character
 > - Patterns are case-insensitive
-
-These search and filtering capabilities are particularly useful when:
-- Exploring available plugins in a large system
-- Debugging entry point configurations
-- Building plugin management interfaces
-- Finding specific extensions across multiple packages
-
 
 ## Integration with Package Management
 
@@ -230,4 +220,5 @@ The Entry Point Registry integrates with Python's [`importlib.metadata`](https:/
 - Other packaging tools that follow the entry points specification
 
 > **📝 Note: Automatic Caching**
-> The registry implements automatic caching of entry points for better performance. The cache is initialized on first use and shared across all registry instances.
+> Both registry types implement automatic caching of entry points for better performance.
+> The cache is initialized on first use and shared across all registry instances.
