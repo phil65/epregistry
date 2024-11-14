@@ -6,14 +6,16 @@ from collections import defaultdict
 from functools import cache
 from importlib.metadata import EntryPoint, entry_points
 import pathlib
-from typing import TYPE_CHECKING, Any, Generic, TypeVar
+from typing import TYPE_CHECKING, Any, Generic
+
+from typing_extensions import TypeVar
 
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
 
-T = TypeVar("T")
+T = TypeVar("T", default=Any)
 
 # Global cache for ALL entry points across all groups
 _entry_point_cache: dict[str, dict[str, EntryPoint]] | None = None
@@ -422,5 +424,5 @@ def list_distributions() -> set[str]:
 
 if __name__ == "__main__":
     # Create a registry for console scripts
-    registry = ModuleEntryPointRegistry[Any]("pytest")
+    registry = ModuleEntryPointRegistry("pytest")
     print(registry.get_all())

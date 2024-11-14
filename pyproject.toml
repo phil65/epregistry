@@ -32,7 +32,9 @@ classifiers = [
 ]
 keywords = []
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "typing-extensions>=4.12.2",
+]
 license = { file = "LICENSE" }
 
 [tool.uv]
