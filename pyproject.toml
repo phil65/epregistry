@@ -34,21 +34,13 @@ dependencies = []
 license = {file = "LICENSE"}
 
 [tool.uv]
-dev-dependencies = [
-    # lint
-    "ruff",
-    "mypy[faster-cache]",
-    # test
-    "pytest",
-    "pytest-cov",
-    
-    # docs
-    "mkdocs-material",
-    "mkdocs-mknodes",
-    # dev
-    "pyreadline3",
-    "pyinstrument",
-]
+default-groups = ["lint", "docs"]
+
+[dependency-groups]
+dev = ["pytest", "pytest-cov", "pyreadline3"]
+benchmark = ["pyinstrument"]
+lint = ["ruff", "mypy[faster-cache]"]
+docs = ["mkdocs-mknodes", "mkdocs-material"]
 
 [project.urls]
 Documentation = "https://phil65.github.io/epregistry/"
