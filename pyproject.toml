@@ -49,6 +49,7 @@ dev = [
     "pyreadline3",
     "devtools",
     # Only add below (Copier)
+    "PyYAML", # for testing distribution-package mapping
 ]
 benchmark = ["pyinstrument"]
 lint = [
