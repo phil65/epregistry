@@ -55,6 +55,9 @@ class ModuleEntryPointRegistry(Generic[T]):
         self.module = module
         self._cache: dict[str, list[EntryPoint]] | None = None
 
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.module!r})"
+
     @property
     def cache(self) -> dict[str, list[EntryPoint]]:
         """Get the module-specific cache of entry points."""
@@ -155,6 +158,9 @@ class EntryPointRegistry(Generic[T]):
         # Ensure the group exists in the global cache
         if self.group not in self._get_cache():
             self._get_cache()[self.group] = {}
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.group!r})"
 
     @property
     def cache(self) -> dict[str, EntryPoint]:
