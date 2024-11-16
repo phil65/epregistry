@@ -1,6 +1,7 @@
 from collections.abc import Mapping
 from functools import cache, lru_cache
 from importlib.metadata import packages_distributions
+from typing import Literal, overload
 
 
 @cache
@@ -120,8 +121,38 @@ def package_to_distribution(package_name: str) -> str | None:
     return None
 
 
+# Create the implementation separately for type checking
 @lru_cache(maxsize=1024)
-def distribution_to_package(distribution_name: str, fallback: bool = False) -> str | None:
+def _distribution_to_package_impl(
+    distribution_name: str, *, fallback: bool = False
+) -> str | None:
+    packages = distribution_to_packages(distribution_name)
+    result = next(iter(packages)) if packages else None
+
+    if result is None and fallback:
+        return distribution_name.replace("-", "_").lower()
+
+    if fallback:
+        assert result is not None
+        return result
+    return result
+
+
+@overload
+def distribution_to_package(
+    distribution_name: str, *, fallback: Literal[True]
+) -> str: ...
+
+
+@overload
+def distribution_to_package(
+    distribution_name: str, *, fallback: Literal[False] = False
+) -> str | None: ...
+
+
+def distribution_to_package(
+    distribution_name: str, *, fallback: bool = False
+) -> str | None:
     """Convert a distribution name to its primary package name.
 
     If a distribution provides multiple packages, returns the primary one.
@@ -142,11 +173,7 @@ def distribution_to_package(distribution_name: str, fallback: bool = False) -> s
         >>> distribution_to_package('nonexistent')
         None
     """
-    packages = distribution_to_packages(distribution_name)
-    result = next(iter(packages)) if packages else None
-    if result is None and fallback:
-        return distribution_name.replace("-", "_").lower()
-    return result
+    return _distribution_to_package_impl(distribution_name, fallback=fallback)
 
 
 @lru_cache(maxsize=1024)
@@ -186,7 +213,7 @@ def clear_caches() -> None:
     get_packages_distributions.cache_clear()
     package_to_distributions.cache_clear()
     package_to_distribution.cache_clear()
-    distribution_to_package.cache_clear()
+    _distribution_to_package_impl.cache_clear()
     distribution_to_packages.cache_clear()
 
 
@@ -207,7 +234,7 @@ def get_cache_info() -> dict[str, str]:
         "get_packages_distributions": str(get_packages_distributions.cache_info()),
         "package_to_distribution": str(package_to_distribution.cache_info()),
         "package_to_distributions": str(package_to_distributions.cache_info()),
-        "distribution_to_package": str(distribution_to_package.cache_info()),
+        "distribution_to_package": str(_distribution_to_package_impl.cache_info()),
         "distribution_to_packages": str(distribution_to_packages.cache_info()),
     }
 
