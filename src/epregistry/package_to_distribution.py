@@ -121,7 +121,7 @@ def package_to_distribution(package_name: str) -> str | None:
 
 
 @lru_cache(maxsize=1024)
-def distribution_to_package(distribution_name: str) -> str | None:
+def distribution_to_package(distribution_name: str, fallback: bool = False) -> str | None:
     """Convert a distribution name to its primary package name.
 
     If a distribution provides multiple packages, returns the primary one.
@@ -129,6 +129,7 @@ def distribution_to_package(distribution_name: str) -> str | None:
 
     Args:
         distribution_name: The name of the distribution
+        fallback: Returns a normalized best guess even if no mapping found
 
     Returns:
         The primary package name if found, None otherwise
@@ -142,7 +143,10 @@ def distribution_to_package(distribution_name: str) -> str | None:
         None
     """
     packages = distribution_to_packages(distribution_name)
-    return next(iter(packages)) if packages else None
+    result = next(iter(packages)) if packages else None
+    if result is None and fallback:
+        return distribution_name.replace("-", "_").lower()
+    return result
 
 
 @lru_cache(maxsize=1024)
