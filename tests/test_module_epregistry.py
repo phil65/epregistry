@@ -149,3 +149,37 @@ def test_registry_type_parameters(module: str, expected_type: type):
     """Test registry with different type parameters."""
     registry = expected_type(module)
     assert isinstance(registry, ModuleEntryPointRegistry)
+
+
+def test_basic_module_registry():
+    """Test basic ModuleEntryPointRegistry functionality using pytest entry points."""
+    # Test with pytest module
+    registry = ModuleEntryPointRegistry[Any]("pytest")
+
+    # Should find some entry points
+    assert len(registry) > 0
+    assert "console_scripts" in registry.groups()
+
+    # Test with non-existent module
+    empty_registry = ModuleEntryPointRegistry[Any]("nonexistent_module")
+    assert len(empty_registry) == 0
+    assert empty_registry.groups() == []
+
+
+def test_module_registry_behavior():
+    """Test ModuleEntryPointRegistry with pytest as an example."""
+    # Test exact module match
+    registry = ModuleEntryPointRegistry[Any]("pytest")
+    all_eps = registry.get_all()
+
+    # Should find pytest console scripts
+    assert "console_scripts" in all_eps
+    assert any(ep.module == "pytest" for ep in all_eps["console_scripts"])
+
+    # Test with plugin module
+    plugin_registry = ModuleEntryPointRegistry[Any]("pytest_cov.plugin")
+    plugin_eps = plugin_registry.get_all()
+
+    # Should find pytest_cov plugin
+    assert "pytest11" in plugin_eps
+    assert any(ep.module == "pytest_cov.plugin" for ep in plugin_eps["pytest11"])
