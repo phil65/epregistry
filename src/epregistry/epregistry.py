@@ -71,10 +71,17 @@ class ModuleEntryPointRegistry(Generic[T]):
         result: defaultdict[str, list[EntryPoint]] = defaultdict(list)
         global_cache = self._get_cache()
 
-        for group_eps in global_cache.values():
-            for ep in group_eps.values():
-                if ep.module == self.module:
+        # If no module specified, don't filter
+        if self.module is None:
+            for group_eps in global_cache.values():
+                for ep in group_eps.values():
                     result[ep.group].append(ep)
+        else:
+            module_with_dot = f"{self.module}."
+            for group_eps in global_cache.values():
+                for ep in group_eps.values():
+                    if ep.module == self.module or ep.module.startswith(module_with_dot):
+                        result[ep.group].append(ep)
 
         self._cache = dict(result)
 
