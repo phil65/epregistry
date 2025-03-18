@@ -35,6 +35,23 @@ def _initialize_cache() -> dict[str, dict[str, EntryPoint]]:
     return dict(all_entry_points)
 
 
+def get_all_entry_points() -> list[EntryPoint]:
+    """Get all available entry points across all groups.
+
+    Returns:
+        A nested dictionary with the structure:
+        {group_name: {entry_point_name: entry_point}}
+
+    Example:
+        >>> all_eps = get_all_entry_points()
+        >>> console_scripts = all_eps.get('console_scripts', {})
+        >>> for name, ep in console_scripts.items():
+        ...     print(f"{name}: {ep.module}:{ep.attr}")
+    """
+    cache = EntryPointRegistry._get_cache()
+    return [ep for group_eps in cache.values() for ep in group_eps.values()]
+
+
 class ModuleEntryPointRegistry(Generic[T]):
     """A registry for managing entry points organized by their module names.
 
