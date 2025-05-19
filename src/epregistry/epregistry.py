@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections import defaultdict
 from functools import cache
 from importlib.metadata import EntryPoint, entry_points
+import logging
 import pathlib
 from typing import TYPE_CHECKING, Any, Generic
 
@@ -19,6 +20,7 @@ T = TypeVar("T", default=Any)
 
 # Global cache for ALL entry points across all groups
 _entry_point_cache: dict[str, dict[str, EntryPoint]] | None = None
+logger = logging.getLogger(__name__)
 
 
 @cache
@@ -300,8 +302,17 @@ class EntryPointRegistry(Generic[T]):
 
         Returns:
             Dictionary mapping entry point names to loaded entry points.
+            Any entry points that fail to load will not be included in the result.
         """
-        return {name: ep.load() for name, ep in self.get_all().items()}
+        result = {}
+        for name, ep in self.get_all().items():
+            try:
+                loaded = ep.load()
+                result[name] = loaded
+            except Exception as e:  # noqa: BLE001
+                msg = "Failed to load entry point %r from group %r: %s"
+                logger.warning(msg, name, self.group, str(e))
+        return result
 
     def get_metadata(self, name: str) -> dict[str, Any]:
         """Get detailed metadata for an entry point."""
