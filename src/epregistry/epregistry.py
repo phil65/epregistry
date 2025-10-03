@@ -304,7 +304,7 @@ class EntryPointRegistry(Generic[T]):
             Dictionary mapping entry point names to loaded entry points.
             Any entry points that fail to load will not be included in the result.
         """
-        result = {}
+        result: dict[str, Any] = {}
         for name, ep in self.get_all().items():
             try:
                 loaded = ep.load()
@@ -312,6 +312,7 @@ class EntryPointRegistry(Generic[T]):
             except Exception as e:  # noqa: BLE001
                 msg = "Failed to load entry point %r from group %r: %s"
                 logger.warning(msg, name, self.group, str(e))
+        logger.debug("Available entry points: %s", sorted(result))
         return result
 
     def get_metadata(self, name: str) -> dict[str, Any]:
