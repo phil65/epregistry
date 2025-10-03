@@ -97,7 +97,7 @@ def test_get_metadata(registry: EntryPointRegistry[Callable[..., Any]]):
 
 def test_get_metadata_nonexistent(registry: EntryPointRegistry[Callable[..., Any]]):
     """Test getting metadata for nonexistent entry point."""
-    with pytest.raises(ValueError, match="No entry point named*"):
+    with pytest.raises(ValueError, match=r"No entry point named*"):
         registry.get_metadata(NONEXISTENT_NAME)
 
 
