@@ -2,8 +2,6 @@
 
 [![PyPI License](https://img.shields.io/pypi/l/epregistry.svg)](https://pypi.org/project/epregistry/)
 [![Package status](https://img.shields.io/pypi/status/epregistry.svg)](https://pypi.org/project/epregistry/)
-[![Daily downloads](https://img.shields.io/pypi/dd/epregistry.svg)](https://pypi.org/project/epregistry/)
-[![Weekly downloads](https://img.shields.io/pypi/dw/epregistry.svg)](https://pypi.org/project/epregistry/)
 [![Monthly downloads](https://img.shields.io/pypi/dm/epregistry.svg)](https://pypi.org/project/epregistry/)
 [![Distribution format](https://img.shields.io/pypi/format/epregistry.svg)](https://pypi.org/project/epregistry/)
 [![Wheel availability](https://img.shields.io/pypi/wheel/epregistry.svg)](https://pypi.org/project/epregistry/)
@@ -21,11 +19,8 @@
 [![Github last commit](https://img.shields.io/github/last-commit/phil65/epregistry)](https://github.com/phil65/epregistry/commits)
 [![Github release date](https://img.shields.io/github/release-date/phil65/epregistry)](https://github.com/phil65/epregistry/releases)
 [![Github language count](https://img.shields.io/github/languages/count/phil65/epregistry)](https://github.com/phil65/epregistry)
-[![Github commits this week](https://img.shields.io/github/commit-activity/w/phil65/epregistry)](https://github.com/phil65/epregistry)
 [![Github commits this month](https://img.shields.io/github/commit-activity/m/phil65/epregistry)](https://github.com/phil65/epregistry)
-[![Github commits this year](https://img.shields.io/github/commit-activity/y/phil65/epregistry)](https://github.com/phil65/epregistry)
 [![Package status](https://codecov.io/gh/phil65/epregistry/branch/main/graph/badge.svg)](https://codecov.io/gh/phil65/epregistry/)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![PyUp](https://pyup.io/repos/github/phil65/epregistry/shield.svg)](https://pyup.io/repos/github/phil65/epregistry/)
 
 [Read the documentation!](https://phil65.github.io/epregistry/)
