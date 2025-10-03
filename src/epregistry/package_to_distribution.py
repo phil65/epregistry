@@ -1,7 +1,12 @@
-from collections.abc import Mapping
+from __future__ import annotations
+
 from functools import cache, lru_cache
 from importlib.metadata import packages_distributions
-from typing import Literal, overload
+from typing import TYPE_CHECKING, Literal, overload
+
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 
 @cache

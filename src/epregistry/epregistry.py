@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from functools import cache
-from importlib.metadata import EntryPoint, entry_points
+from importlib.metadata import entry_points
 import logging
 import pathlib
 from typing import TYPE_CHECKING, Any, Generic
@@ -14,6 +14,7 @@ from typing_extensions import TypeVar
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
+    from importlib.metadata import EntryPoint
 
 
 T = TypeVar("T", default=Any)
