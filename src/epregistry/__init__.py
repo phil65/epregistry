@@ -1,4 +1,7 @@
-"""epregistry: A registry for entry points (cached and generically typed)"""
+"""epregistry: main package.
+
+A registry for entry points (cached and generically typed).
+"""
 
 from __future__ import annotations
 
@@ -6,7 +9,7 @@ from importlib.metadata import version
 
 __version__ = version("epregistry")
 __title__ = "epregistry"
-__description__ = "A registry for entry points (cached and generically typed)"
+
 __author__ = "Philipp Temminghoff"
 __author_email__ = "philipptemminghoff@googlemail.com"
 __copyright__ = "Copyright (c) 2024 Philipp Temminghoff"
