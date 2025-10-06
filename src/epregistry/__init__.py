@@ -1,4 +1,8 @@
-__version__ = "1.2.2"
+from __future__ import annotations
+
+from importlib.metadata import version
+
+__version__ = version("epregistry")
 
 from importlib.metadata import EntryPoint
 from epregistry.epregistry import (
@@ -20,6 +24,7 @@ from epregistry.package_to_distribution import (
 
 
 __all__ = [
+    "__version__",
     "EntryPoint",
     "EntryPointRegistry",
     "ModuleEntryPointRegistry",
