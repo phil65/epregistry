@@ -24,10 +24,10 @@ from epregistry.package_to_distribution import (
 
 
 __all__ = [
-    "__version__",
     "EntryPoint",
     "EntryPointRegistry",
     "ModuleEntryPointRegistry",
+    "__version__",
     "available_groups",
     "distribution_to_package",
     "distribution_to_packages",
