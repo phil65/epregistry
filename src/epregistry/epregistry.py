@@ -7,9 +7,7 @@ from functools import cache
 from importlib.metadata import entry_points
 import logging
 import pathlib
-from typing import TYPE_CHECKING, Any, Generic
-
-from typing_extensions import TypeVar
+from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
 
 if TYPE_CHECKING:
