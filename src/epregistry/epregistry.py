@@ -7,15 +7,13 @@ from functools import cache
 from importlib.metadata import entry_points
 import logging
 import pathlib
-from typing import TYPE_CHECKING, Any, Generic, TypeVar
+from typing import TYPE_CHECKING, Any
 
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
     from importlib.metadata import EntryPoint
 
-
-T = TypeVar("T", default=Any)
 
 # Global cache for ALL entry points across all groups
 _entry_point_cache: dict[str, dict[str, EntryPoint]] | None = None
@@ -53,7 +51,7 @@ def get_all_entry_points() -> list[EntryPoint]:
     return [ep for group_eps in cache.values() for ep in group_eps.values()]
 
 
-class ModuleEntryPointRegistry(Generic[T]):
+class ModuleEntryPointRegistry[T = Any]:
     """A registry for managing entry points organized by their module names.
 
     This class provides an interface to work with entry points grouped by their
@@ -158,7 +156,7 @@ class ModuleEntryPointRegistry(Generic[T]):
         return {group: [ep.load() for ep in eps] for group, eps in self.cache.items()}
 
 
-class EntryPointRegistry(Generic[T]):
+class EntryPointRegistry[T = Any]:
     """A registry for managing and accessing entry points of a specific group.
 
     This class provides a convenient interface to work with entry points from a specified
