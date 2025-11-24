@@ -128,9 +128,7 @@ def package_to_distribution(package_name: str) -> str | None:
 
 # Create the implementation separately for type checking
 @lru_cache(maxsize=1024)
-def _distribution_to_package_impl(
-    distribution_name: str, *, fallback: bool = False
-) -> str | None:
+def _distribution_to_package_impl(distribution_name: str, *, fallback: bool = False) -> str | None:
     packages = distribution_to_packages(distribution_name)
     result = next(iter(packages)) if packages else None
 
@@ -144,9 +142,7 @@ def _distribution_to_package_impl(
 
 
 @overload
-def distribution_to_package(
-    distribution_name: str, *, fallback: Literal[True]
-) -> str: ...
+def distribution_to_package(distribution_name: str, *, fallback: Literal[True]) -> str: ...
 
 
 @overload
@@ -155,9 +151,7 @@ def distribution_to_package(
 ) -> str | None: ...
 
 
-def distribution_to_package(
-    distribution_name: str, *, fallback: bool = False
-) -> str | None:
+def distribution_to_package(distribution_name: str, *, fallback: bool = False) -> str | None:
     """Convert a distribution name to its primary package name.
 
     If a distribution provides multiple packages, returns the primary one.

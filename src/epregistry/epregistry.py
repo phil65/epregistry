@@ -428,11 +428,7 @@ def search_entry_points(
                 matches = True
 
             # Check distribution name
-            if (
-                include_distributions
-                and ep.dist
-                and query in ep.dist.metadata["Name"].lower()
-            ):
+            if include_distributions and ep.dist and query in ep.dist.metadata["Name"].lower():
                 matches = True
 
             if matches or group_matches:
