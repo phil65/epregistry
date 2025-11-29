@@ -62,7 +62,7 @@ class ModuleEntryPointRegistry[T = Any]:
         module: The module name to filter entry points by.
     """
 
-    def __init__(self, module: str | None = None):
+    def __init__(self, module: str | None = None) -> None:
         """Initialize the registry for a specific module.
 
         Args:
@@ -169,7 +169,7 @@ class EntryPointRegistry[T = Any]:
         group: The name of the entry point group being managed.
     """
 
-    def __init__(self, group: str):
+    def __init__(self, group: str) -> None:
         """Initialize the registry for a specific entry point group.
 
         Args:
