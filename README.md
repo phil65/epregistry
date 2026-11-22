@@ -21,17 +21,31 @@
 [![Github language count](https://img.shields.io/github/languages/count/phil65/epregistry)](https://github.com/phil65/epregistry)
 [![Github commits this month](https://img.shields.io/github/commit-activity/m/phil65/epregistry)](https://github.com/phil65/epregistry)
 [![Package status](https://codecov.io/gh/phil65/epregistry/branch/main/graph/badge.svg)](https://codecov.io/gh/phil65/epregistry/)
-[![PyUp](https://pyup.io/repos/github/phil65/epregistry/shield.svg)](https://pyup.io/repos/github/phil65/epregistry/)
 
 [Read the documentation!](https://phil65.github.io/epregistry/)
 
 ## Overview
 
-The Entry Point Registry system provides a convenient way to manage and access Python entry points. It offers two different approaches to work with entry points:
+`epregistry` is a small, dependency-free layer over `importlib.metadata` for working with
+Python entry points. All entry points are read once and cached, and registries are generically
+typed so that loaded plugins get the type you expect. It offers two ways to access entry points:
+
 - Group-based access: Work with all entry points in a specific group
 - Module-based access: Work with all entry points provided by a specific module
 
-This flexibility makes it particularly useful for plugin systems, extensions, or any modular components in Python applications.
+On top of that it provides discovery/search helpers and cached conversion between package
+(import) names and distribution names. This makes it useful for plugin systems, extensions,
+or any modular components in Python applications.
+
+## Installation
+
+```bash
+pip install epregistry
+# or
+uv add epregistry
+```
+
+Requires Python 3.13 or newer.
 
 ## Basic Usage
 
@@ -40,6 +54,8 @@ This flexibility makes it particularly useful for plugin systems, extensions, or
 When you want to work with entry points organized by their group:
 
 ```python
+from collections.abc import Callable
+
 from epregistry import EntryPointRegistry
 
 # Create a registry for console scripts
@@ -57,6 +73,8 @@ all_scripts = registry.get_all()
 When you want to work with all entry points provided by a specific module:
 
 ```python
+from typing import Any
+
 from epregistry import ModuleEntryPointRegistry
 
 # Create a registry for a specific module
@@ -162,9 +180,12 @@ print(f"Version: {metadata['version']}")
 
 ### Extension Point Directory
 
+For entry points that point to a module (i.e. the loaded object has a `__file__`),
+get the directory the module is installed in:
+
 ```python
 # For group-based registry
-directory = registry.get_extension_point_dir("script_name")
+directory = registry.get_extension_point_dir("plugin_name")
 print(f"Extension is installed at: {directory}")
 ```
 
@@ -203,11 +224,16 @@ distributions = list_distributions()
 
 ## Package and Distribution Name Conversion
 
-The package also contain some helpers to convert between package and distribution names.
-The mapping in this case is also cached, only the first conversion may take long to build the index.
+The package also contains helpers to convert between package (import) names and distribution names.
+The mapping is cached as well; only the first conversion takes time to build the index.
 
 ```python
-from epregistry import package_to_distribution, distribution_to_package
+from epregistry import (
+    distribution_to_package,
+    distribution_to_packages,
+    package_to_distribution,
+    package_to_distributions,
+)
 
 # Convert package name to distribution
 dist_name = package_to_distribution("PIL")  # Returns 'Pillow'
@@ -216,16 +242,28 @@ dist_name = package_to_distribution("requests")  # Returns 'requests'
 # Convert distribution to primary package
 pkg_name = distribution_to_package("Pillow")  # Returns 'PIL'
 pkg_name = distribution_to_package("requests")  # Returns 'requests'
+
+# All packages of a distribution / all distributions of a (namespace) package
+pkgs = distribution_to_packages("python-dateutil")  # Returns {'dateutil'}
+dists = package_to_distributions("zope")  # e.g. ['zope.interface', 'zope.event']
+
+# Return a normalized best guess instead of None if no mapping is found
+pkg_name = distribution_to_package("some-dist", fallback=True)  # 'some_dist'
 ```
+
+Editable installs that only ship a `.pth` file (e.g. built with `uv_build`) are resolved
+when the normalized distribution name is importable from the path in that `.pth` file.
 
 ## Integration with Package Management
 
 The Entry Point Registry integrates with Python's [`importlib.metadata`](https://docs.python.org/3/library/importlib.metadata.html) system, making it compatible with:
 
 - [📦 setuptools](https://setuptools.pypa.io/en/latest/)
+- [📦 uv](https://docs.astral.sh/uv/)
 - [📦 poetry](https://python-poetry.org/)
 - Other packaging tools that follow the entry points specification
 
 > **📝 Note: Automatic Caching**
 > Both registry types implement automatic caching of entry points for better performance.
 > The cache is initialized on first use and shared across all registry instances.
+> Entry points of packages installed after the cache was built are not picked up.
