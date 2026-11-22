@@ -38,14 +38,12 @@ def get_all_entry_points() -> list[EntryPoint]:
     """Get all available entry points across all groups.
 
     Returns:
-        A nested dictionary with the structure:
-        {group_name: {entry_point_name: entry_point}}
+        A flat list of all entry points of all groups.
 
     Example:
         >>> all_eps = get_all_entry_points()
-        >>> console_scripts = all_eps.get('console_scripts', {})
-        >>> for name, ep in console_scripts.items():
-        ...     print(f"{name}: {ep.module}:{ep.attr}")
+        >>> for ep in all_eps:
+        ...     print(f"{ep.group} / {ep.name}: {ep.value}")
     """
     cache = EntryPointRegistry._get_cache()
     return [ep for group_eps in cache.values() for ep in group_eps.values()]
@@ -250,10 +248,10 @@ class EntryPointRegistry[T = Any]:
             raise KeyError(msg) from e
 
     def __iter__(self) -> Iterator[EntryPoint]:
-        """Iterate over entry point names.
+        """Iterate over the entry points of this group.
 
         Returns:
-            Iterator of entry point names.
+            Iterator of EntryPoint objects.
         """
         return iter(self.cache.values())
 
@@ -313,7 +311,17 @@ class EntryPointRegistry[T = Any]:
         return result
 
     def get_metadata(self, name: str) -> dict[str, Any]:
-        """Get detailed metadata for an entry point."""
+        """Get detailed metadata for an entry point.
+
+        Args:
+            name: The name of the entry point.
+
+        Returns:
+            Dictionary with the keys "module", "attr", "dist" and "version".
+
+        Raises:
+            ValueError: If the entry point is not found.
+        """
         ep = self.get(name)
         if not ep:
             msg = f"No entry point named '{name}' found in group '{self.group}'"
@@ -326,7 +334,13 @@ class EntryPointRegistry[T = Any]:
         }
 
     def get_extension_point_dir(self, name: str) -> pathlib.Path:
-        """Return the directory of an installed extension point object by name."""
+        """Return the directory of an installed extension point object by name.
+
+        The entry point must load an object with a `__file__` (e.g. a module).
+
+        Args:
+            name: The name of the entry point.
+        """
         ep = self.load(name)
         assert ep
         file_path = getattr(ep, "__file__", None)
