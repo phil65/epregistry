@@ -9,7 +9,6 @@
 [![Implementation](https://img.shields.io/pypi/implementation/epregistry.svg)](https://pypi.org/project/epregistry/)
 [![Releases](https://img.shields.io/github/downloads/phil65/epregistry/total.svg)](https://github.com/phil65/epregistry/releases)
 [![Github Contributors](https://img.shields.io/github/contributors/phil65/epregistry)](https://github.com/phil65/epregistry/graphs/contributors)
-[![Github Discussions](https://img.shields.io/github/discussions/phil65/epregistry)](https://github.com/phil65/epregistry/discussions)
 [![Github Forks](https://img.shields.io/github/forks/phil65/epregistry)](https://github.com/phil65/epregistry/forks)
 [![Github Issues](https://img.shields.io/github/issues/phil65/epregistry)](https://github.com/phil65/epregistry/issues)
 [![Github Issues](https://img.shields.io/github/issues-pr/phil65/epregistry)](https://github.com/phil65/epregistry/pulls)
