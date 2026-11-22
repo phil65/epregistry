@@ -1,18 +1,70 @@
 from __future__ import annotations
 
 from functools import cache, lru_cache
-from importlib.metadata import packages_distributions
+from importlib.metadata import distributions, packages_distributions
+from pathlib import Path
 from typing import TYPE_CHECKING, Literal, overload
 
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
+    from importlib.metadata import Distribution
+
+
+def _editable_packages(dist: Distribution) -> set[str]:
+    """Guess the top-level packages of a .pth-based editable install.
+
+    Editable installs from some build backends (e.g. uv_build) only ship a `.pth`
+    file pointing to the source directory, so `packages_distributions()` finds no
+    top-level names for them. This checks whether the normalized distribution name
+    exists as a package or module in one of the directories listed in those
+    `.pth` files.
+
+    Args:
+        dist: The distribution to inspect
+
+    Returns:
+        The set of top-level package names found (empty or a single name)
+    """
+    name = dist.metadata.get("Name")
+    if not name:
+        return set()
+    candidate = name.lower().replace("-", "_").replace(".", "_")
+    for file in dist.files or []:
+        if file.suffix != ".pth":
+            continue
+        try:
+            content = file.read_text()
+        except (OSError, UnicodeDecodeError):
+            continue
+        for raw_line in content.splitlines():
+            line = raw_line.strip()
+            if not line or line.startswith(("#", "import ", "import\t")):
+                continue
+            directory = Path(line)
+            if (directory / candidate / "__init__.py").is_file() or (
+                directory / f"{candidate}.py"
+            ).is_file():
+                return {candidate}
+    return set()
 
 
 @cache
 def get_packages_distributions() -> Mapping[str, list[str]]:
-    """Cached call for packages_distributions."""
-    return packages_distributions()
+    """Cached call for packages_distributions.
+
+    Extends the stdlib mapping with packages of .pth-based editable installs
+    which `packages_distributions()` does not report.
+    """
+    mapping = dict(packages_distributions())
+    known = {dist for dists in mapping.values() for dist in dists}
+    for dist in distributions():
+        name = dist.metadata.get("Name")
+        if not name or name in known:
+            continue
+        for pkg in _editable_packages(dist):
+            mapping.setdefault(pkg, []).append(name)
+    return mapping
 
 
 @cache

@@ -171,3 +171,44 @@ def test_internal_mapping_types():
     assert isinstance(get_packages_distributions(), dict)
     assert isinstance(_get_normalized_pkg_dist_map(), dict)
     assert isinstance(_get_normalized_dist_pkg_map(), dict)
+
+
+def _make_editable_dist(tmp_path, pth_content: str):
+    """Create a fake .pth-based editable install of `foo-bar` in tmp_path."""
+    from importlib.metadata import PathDistribution
+
+    site = tmp_path / "site"
+    dist_info = site / "foo_bar-1.0.dist-info"
+    dist_info.mkdir(parents=True)
+    (dist_info / "METADATA").write_text("Metadata-Version: 2.4\nName: foo-bar\nVersion: 1.0\n")
+    (dist_info / "RECORD").write_text("foo_bar-1.0.dist-info/METADATA,,\nfoo_bar.pth,,\n")
+    (site / "foo_bar.pth").write_text(pth_content)
+    return PathDistribution(dist_info)
+
+
+def test_editable_packages_from_pth(tmp_path):
+    """Packages of .pth-based editable installs are detected."""
+    from epregistry.package_to_distribution import _editable_packages
+
+    src = tmp_path / "src"
+    (src / "foo_bar").mkdir(parents=True)
+    (src / "foo_bar" / "__init__.py").write_text("")
+    dist = _make_editable_dist(tmp_path, f"{src}\n")
+    assert _editable_packages(dist) == {"foo_bar"}
+
+
+def test_editable_packages_ignores_unrelated_pth(tmp_path):
+    """Import lines and directories without a matching package are ignored."""
+    from epregistry.package_to_distribution import _editable_packages
+
+    other = tmp_path / "other"
+    (other / "something_else").mkdir(parents=True)
+    (other / "something_else" / "__init__.py").write_text("")
+    dist = _make_editable_dist(tmp_path, f"import foo_bar\n# comment\n{other}\n")
+    assert _editable_packages(dist) == set()
+
+
+def test_own_distribution_resolves():
+    """Epregistry resolves itself, also when installed in editable mode."""
+    assert distribution_to_package("epregistry") == "epregistry"
+    assert package_to_distribution("epregistry") == "epregistry"
