@@ -329,8 +329,9 @@ class EntryPointRegistry[T = Any]:
         """Return the directory of an installed extension point object by name."""
         ep = self.load(name)
         assert ep
-        assert hasattr(ep, "__file__")
-        path = pathlib.Path(ep.__file__).resolve()
+        file_path = getattr(ep, "__file__", None)
+        assert isinstance(file_path, str)
+        path = pathlib.Path(file_path).resolve()
         return path.parent
 
 

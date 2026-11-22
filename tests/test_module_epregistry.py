@@ -11,7 +11,7 @@ from epregistry.epregistry import ModuleEntryPointRegistry
 
 
 # Test constants
-PYTEST_MODULE = "pytest"  # pytest has multiple entry points in different groups
+PYTEST_MODULE = "_pytest"  # pytest>=9 console_scripts point to _pytest.config
 NONEXISTENT_MODULE = "nonexistent.module"
 NONEXISTENT_GROUP = "nonexistent.group"
 
@@ -154,7 +154,7 @@ def test_registry_type_parameters(module: str, expected_type: type):
 def test_basic_module_registry():
     """Test basic ModuleEntryPointRegistry functionality using pytest entry points."""
     # Test with pytest module
-    registry = ModuleEntryPointRegistry[Any]("pytest")
+    registry = ModuleEntryPointRegistry[Any](PYTEST_MODULE)
 
     # Should find some entry points
     assert len(registry) > 0
@@ -169,12 +169,12 @@ def test_basic_module_registry():
 def test_module_registry_behavior():
     """Test ModuleEntryPointRegistry with pytest as an example."""
     # Test exact module match
-    registry = ModuleEntryPointRegistry[Any]("pytest")
+    registry = ModuleEntryPointRegistry[Any](PYTEST_MODULE)
     all_eps = registry.get_all()
 
     # Should find pytest console scripts
     assert "console_scripts" in all_eps
-    assert any(ep.module == "pytest" for ep in all_eps["console_scripts"])
+    assert any(ep.module.startswith(PYTEST_MODULE) for ep in all_eps["console_scripts"])
 
     # Test with plugin module
     plugin_registry = ModuleEntryPointRegistry[Any]("pytest_cov.plugin")

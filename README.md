@@ -117,7 +117,6 @@ eps = registry.get_group("console_scripts")
 
 # Load all entry points for a group
 loaded_eps = registry.load_group("console_scripts")
-
 ```
 
 #### Access All Entry Points
@@ -167,7 +166,6 @@ print(f"Version: {metadata['version']}")
 # For group-based registry
 directory = registry.get_extension_point_dir("script_name")
 print(f"Extension is installed at: {directory}")
-
 ```
 
 ### Discovery and Search
@@ -190,10 +188,7 @@ test_eps = filter_entry_points(name_pattern="test_*")
 
 # Search across all entry points
 results = search_entry_points(
-    "test",
-    include_groups=True,
-    include_names=True,
-    include_distributions=True
+    "test", include_groups=True, include_names=True, include_distributions=True
 )
 
 # List all distributions with entry points
