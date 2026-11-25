@@ -51,7 +51,7 @@ uv run pytest                        # tests (duty: `uv run duty test`)
 uvx ruff check . && uvx ruff format --check .   # lint (CI uses the latest ruff)
 uv run ty check                      # type check, src/ only; warnings fail CI
 uv run deptry src                    # dependency hygiene
-uv run mkdocs-mknodes build          # docs (duty: `uv run duty build`; `serve` to preview)
+uv run mknodes build          # docs (duty: `uv run duty build`; `serve` to preview)
 uv build                             # build sdist/wheel (uv_build backend)
 uv run duty lint                     # ruff fix + format + ty (duty comes in via the docs group)
 uv run duty version patch            # bump version, commit and tag (owner only)
