@@ -35,7 +35,7 @@ def _editable_packages(dist: Distribution) -> set[str]:
             continue
         try:
             content = file.read_text()
-        except (OSError, UnicodeDecodeError):
+        except OSError, UnicodeDecodeError:
             continue
         for raw_line in content.splitlines():
             line = raw_line.strip()
