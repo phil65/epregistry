@@ -3,11 +3,14 @@ from __future__ import annotations
 from functools import cache, lru_cache
 from importlib.metadata import distributions, packages_distributions
 from pathlib import Path
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Literal, overload
+
+from epregistry.epregistry import clear_entry_point_cache
 
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Iterable, Mapping, Sequence
     from importlib.metadata import Distribution
 
 
@@ -49,14 +52,33 @@ def _editable_packages(dist: Distribution) -> set[str]:
     return set()
 
 
+def _normalize(name: str) -> str:
+    """Normalize a package or distribution name for matching (not for importing)."""
+    return name.lower().replace("-", "_").replace(".", "_").lstrip("_")
+
+
+def _primary_package(distribution_name: str, packages: Iterable[str]) -> str | None:
+    """Pick the primary top-level package of a distribution, deterministically.
+
+    Prefers the package whose normalized name equals the normalized distribution
+    name; otherwise names without a leading underscore, then the shortest, then
+    alphabetical order. Returns the real (importable) name.
+    """
+    candidates = sorted(packages, key=lambda p: (p.startswith("_"), len(p), p))
+    if not candidates:
+        return None
+    target = _normalize(distribution_name)
+    return next((p for p in candidates if _normalize(p) == target), candidates[0])
+
+
 @cache
-def get_packages_distributions() -> Mapping[str, list[str]]:
-    """Cached call for packages_distributions.
+def get_packages_distributions() -> Mapping[str, Sequence[str]]:
+    """Cached call for packages_distributions (read-only).
 
     Extends the stdlib mapping with packages of .pth-based editable installs
     which `packages_distributions()` does not report.
     """
-    mapping = dict(packages_distributions())
+    mapping = {pkg: list(dists) for pkg, dists in packages_distributions().items()}
     known = {dist for dists in mapping.values() for dist in dists}
     for dist in distributions():
         name = dist.metadata.get("Name")
@@ -64,7 +86,7 @@ def get_packages_distributions() -> Mapping[str, list[str]]:
             continue
         for pkg in _editable_packages(dist):
             mapping.setdefault(pkg, []).append(name)
-    return mapping
+    return MappingProxyType({pkg: tuple(dists) for pkg, dists in mapping.items()})
 
 
 @cache
@@ -87,25 +109,25 @@ def _get_normalized_pkg_dist_map() -> dict[str, str]:
 
 
 @cache
-def _get_normalized_dist_pkg_map() -> dict[str, set[str]]:
+def _get_normalized_dist_pkg_map() -> Mapping[str, frozenset[str]]:
     """Cache the normalized distribution to package mapping.
 
     Returns:
-        A dictionary mapping normalized distribution names to sets of package names.
+        A mapping of normalized distribution names to their (real) package names.
     """
     result: dict[str, set[str]] = {}
     for pkg, dists in get_packages_distributions().items():
         for dist in dists:
             normalized_dist = dist.lower().replace("-", "_")
-            if normalized_dist not in result:
-                result[normalized_dist] = set()
-            # For distribution_to_package, prefer unprefixed version if available
-            clean_pkg = pkg.lstrip("_")
-            result[normalized_dist].add(clean_pkg)
-    return result
+            result.setdefault(normalized_dist, set()).add(pkg)
+    return MappingProxyType({dist: frozenset(pkgs) for dist, pkgs in result.items()})
 
 
 @lru_cache(maxsize=1024)
+def _package_to_distributions_impl(package_name: str) -> Sequence[str] | None:
+    return get_packages_distributions().get(package_name)
+
+
 def package_to_distributions(package_name: str) -> list[str] | None:
     """Convert a package name to all its distribution names.
 
@@ -127,8 +149,8 @@ def package_to_distributions(package_name: str) -> list[str] | None:
         For namespace packages (like 'zope'), returns all related distributions.
         This is particularly useful for examining namespace package relationships.
     """
-    pkg_dist_map = get_packages_distributions()
-    return pkg_dist_map.get(package_name)
+    dists = _package_to_distributions_impl(package_name)
+    return list(dists) if dists is not None else None
 
 
 @lru_cache(maxsize=1024)
@@ -181,15 +203,9 @@ def package_to_distribution(package_name: str) -> str | None:
 # Create the implementation separately for type checking
 @lru_cache(maxsize=1024)
 def _distribution_to_package_impl(distribution_name: str, *, fallback: bool = False) -> str | None:
-    packages = distribution_to_packages(distribution_name)
-    result = next(iter(packages)) if packages else None
-
+    result = _primary_package(distribution_name, distribution_to_packages(distribution_name))
     if result is None and fallback:
         return distribution_name.replace("-", "_").lower()
-
-    if fallback:
-        assert result is not None
-        return result
     return result
 
 
@@ -206,8 +222,10 @@ def distribution_to_package(
 def distribution_to_package(distribution_name: str, *, fallback: bool = False) -> str | None:
     """Convert a distribution name to its primary package name.
 
-    If a distribution provides multiple packages, returns the primary one.
-    Use distribution_to_packages() to get all packages.
+    If a distribution provides multiple packages, returns the primary one: the
+    package named like the distribution, else the shortest name without a leading
+    underscore (ties broken alphabetically). Use distribution_to_packages() to get
+    all packages.
 
     Args:
         distribution_name: The name of the distribution
@@ -228,14 +246,14 @@ def distribution_to_package(distribution_name: str, *, fallback: bool = False) -
 
 
 @lru_cache(maxsize=1024)
-def distribution_to_packages(distribution_name: str) -> set[str]:
+def distribution_to_packages(distribution_name: str) -> frozenset[str]:
     """Convert a distribution name to all its package names.
 
     Args:
         distribution_name: The name of the distribution
 
     Returns:
-        A set of package names provided by the distribution
+        A frozenset of the (importable) top-level package names of the distribution
 
     Example:
         >>> distribution_to_packages('Pillow')
@@ -247,11 +265,11 @@ def distribution_to_packages(distribution_name: str) -> set[str]:
     """
     normalized_dist = distribution_name.lower().replace("-", "_")
     normalized_map = _get_normalized_dist_pkg_map()
-    return normalized_map.get(normalized_dist, set())
+    return normalized_map.get(normalized_dist, frozenset())
 
 
 def clear_caches() -> None:
-    """Clear all function caches.
+    """Clear all function caches, the entry point cache included.
 
     This should be called when the underlying package distributions might have changed,
     for example after installing or removing packages.
@@ -262,10 +280,11 @@ def clear_caches() -> None:
     _get_normalized_pkg_dist_map.cache_clear()
     _get_normalized_dist_pkg_map.cache_clear()
     get_packages_distributions.cache_clear()
-    package_to_distributions.cache_clear()
+    _package_to_distributions_impl.cache_clear()
     package_to_distribution.cache_clear()
     _distribution_to_package_impl.cache_clear()
     distribution_to_packages.cache_clear()
+    clear_entry_point_cache()
 
 
 def get_cache_info() -> dict[str, str]:
@@ -284,7 +303,7 @@ def get_cache_info() -> dict[str, str]:
         "normalized_dist_pkg_map": str(_get_normalized_dist_pkg_map.cache_info()),
         "get_packages_distributions": str(get_packages_distributions.cache_info()),
         "package_to_distribution": str(package_to_distribution.cache_info()),
-        "package_to_distributions": str(package_to_distributions.cache_info()),
+        "package_to_distributions": str(_package_to_distributions_impl.cache_info()),
         "distribution_to_package": str(_distribution_to_package_impl.cache_info()),
         "distribution_to_packages": str(distribution_to_packages.cache_info()),
     }

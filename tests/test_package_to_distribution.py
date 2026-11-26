@@ -73,7 +73,7 @@ def test_distribution_to_package_case_insensitive():
 def test_distribution_to_packages_known():
     """Test converting known distribution to package set."""
     packages = distribution_to_packages(KNOWN_DISTRIBUTION)
-    assert isinstance(packages, set)
+    assert isinstance(packages, frozenset)
     assert len(packages) > 0
     assert KNOWN_PACKAGE in packages
 
@@ -168,9 +168,11 @@ def test_invalid_input_types(invalid_input):
 
 def test_internal_mapping_types():
     """Test that internal mapping functions return correct types."""
-    assert isinstance(get_packages_distributions(), dict)
+    from collections.abc import Mapping
+
+    assert isinstance(get_packages_distributions(), Mapping)
     assert isinstance(_get_normalized_pkg_dist_map(), dict)
-    assert isinstance(_get_normalized_dist_pkg_map(), dict)
+    assert isinstance(_get_normalized_dist_pkg_map(), Mapping)
 
 
 def _make_editable_dist(tmp_path, pth_content: str):
@@ -212,3 +214,95 @@ def test_own_distribution_resolves():
     """Epregistry resolves itself, also when installed in editable mode."""
     assert distribution_to_package("epregistry") == "epregistry"
     assert package_to_distribution("epregistry") == "epregistry"
+
+
+def _run_with_hash_seed(seed: int, code: str) -> str:
+    import os
+    import subprocess
+    import sys
+
+    env = {**os.environ, "PYTHONHASHSEED": str(seed)}
+    proc = subprocess.run(
+        [sys.executable, "-c", code], env=env, capture_output=True, text=True, check=True
+    )
+    return proc.stdout.strip()
+
+
+def test_distribution_to_package_is_deterministic():
+    """The primary package doesn't depend on the hash seed (pytest ships py and pytest)."""
+    code = "from epregistry import distribution_to_package as d; print(d('pytest'))"
+    results = {_run_with_hash_seed(seed, code) for seed in range(1, 7)}
+    assert results == {"pytest"}
+
+
+def test_primary_package_prefers_distribution_name():
+    from epregistry.package_to_distribution import _primary_package
+
+    assert _primary_package("pytest", {"py", "pytest", "_pytest"}) == "pytest"
+    assert _primary_package("upathtools", {"upathtools_config", "upathtools"}) == "upathtools"
+    assert _primary_package("logfire-sdk", {"logfire", "logfire_sdk"}) == "logfire_sdk"
+    assert _primary_package("tomli", {"c787785866c7b801238d__mypyc", "tomli"}) == "tomli"
+    assert _primary_package("Pillow", {"PIL"}) == "PIL"
+    # no name match: names without a leading underscore first, shortest, then sorted
+    assert _primary_package("foo", {"_hidden", "zz", "bb", "aaa"}) == "bb"
+
+
+def test_distribution_to_package_keeps_leading_underscore():
+    """A distribution whose only package starts with "_" gets its importable name."""
+    from epregistry.package_to_distribution import _primary_package
+
+    assert _primary_package("distutils-hack", {"_distutils_hack"}) == "_distutils_hack"
+
+
+def test_distribution_to_packages_keeps_real_names(monkeypatch: pytest.MonkeyPatch):
+    import sys
+
+    mod = sys.modules["epregistry.package_to_distribution"]
+    monkeypatch.setattr(mod, "packages_distributions", lambda: {"_private_pkg": ["private-pkg"]})
+    monkeypatch.setattr(mod, "distributions", list)
+    clear_caches()
+    try:
+        assert distribution_to_packages("private-pkg") == {"_private_pkg"}
+        assert distribution_to_package("private-pkg") == "_private_pkg"
+        # matching still ignores the underscore
+        assert package_to_distribution("private_pkg") == "private-pkg"
+    finally:
+        monkeypatch.undo()
+        clear_caches()
+
+
+def test_cached_results_cannot_be_corrupted():
+    """Results handed out don't share mutable state with the caches."""
+    from epregistry import package_to_distributions
+
+    packages = distribution_to_packages("pytest")
+    with pytest.raises(AttributeError):
+        packages.add("BOGUS")  # ty: ignore[unresolved-attribute]
+    assert "BOGUS" not in distribution_to_packages("pytest")
+
+    dists = package_to_distributions(KNOWN_PACKAGE)
+    assert dists is not None
+    dists.append("BOGUS")
+    assert package_to_distributions(KNOWN_PACKAGE) == [KNOWN_DISTRIBUTION]
+
+    mapping = get_packages_distributions()
+    with pytest.raises(TypeError):
+        mapping["bogus"] = ["x"]  # ty: ignore[invalid-assignment]
+    assert "bogus" not in get_packages_distributions()
+
+
+def test_clear_caches_also_clears_entry_points(monkeypatch: pytest.MonkeyPatch):
+    from importlib.metadata import EntryPoint
+
+    from epregistry import epregistry as mod
+    from epregistry.epregistry import EntryPointRegistry
+
+    ep = EntryPoint(name="x", value="os:getcwd", group="epregistry.test.clear")
+    EntryPointRegistry("console_scripts").names()  # build the cache
+    monkeypatch.setattr(mod, "entry_points", lambda: [ep])
+    clear_caches()
+    try:
+        assert EntryPointRegistry("epregistry.test.clear").names() == ["x"]
+    finally:
+        monkeypatch.undo()
+        clear_caches()
