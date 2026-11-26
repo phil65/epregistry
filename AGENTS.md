@@ -70,8 +70,8 @@ uv run duty version patch            # bump version, commit and tag (owner only)
 
 ## Conventions
 
-- Python >= 3.13; PEP 695 generics with defaults (`class EntryPointRegistry[T = Any]`).
-- `from __future__ import annotations` everywhere; type-only imports under `TYPE_CHECKING`.
+- Python >= 3.14; PEP 695 generics with defaults (`class EntryPointRegistry[T = Any]`).
+- No `from __future__ import annotations` (PEP 649; banned via ruff TID251); type-only imports under `TYPE_CHECKING`.
 - Google-style docstrings without types in `Args`; ruff config (line length 100, preview
   formatting, wide rule set) is in `pyproject.toml`. Markdown code blocks (README) are
   ruff-formatted too.
