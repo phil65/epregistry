@@ -3,35 +3,78 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from functools import cache
 from importlib.metadata import entry_points
 import logging
 import pathlib
+import threading
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
 
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
-    from importlib.metadata import EntryPoint
+    from collections.abc import Iterator, Mapping
+    from importlib.metadata import Distribution, EntryPoint
 
 
-# Global cache for ALL entry points across all groups
-_entry_point_cache: dict[str, dict[str, EntryPoint]] | None = None
 logger = logging.getLogger(__name__)
 
+# Global cache for ALL entry points across all groups: {group: {name: EntryPoint}}.
+# Built lazily under a lock (double-checked, so concurrent first calls under
+# free-threading build it once); `clear_entry_point_cache()` drops it.
+_entry_point_cache: dict[str, dict[str, EntryPoint]] | None = None
+_entry_point_cache_lock = threading.Lock()
+_EMPTY_GROUP: Mapping[str, EntryPoint] = MappingProxyType({})
+# Distribution names of the cached entry points, by Distribution object (hashed
+# by identity; holding them as keys keeps ids from being reused)
+_dist_names: dict[Distribution, str] = {}
 
-@cache
+
 def _initialize_cache() -> dict[str, dict[str, EntryPoint]]:
-    """Initialize the global cache with ALL entry points.
+    """Read ALL entry points into a nested dictionary.
 
     Returns:
         dict: A nested dictionary mapping group names to their entry points.
             Structure: {group_name: {entry_point_name: entry_point}}
+            Of same-named entry points in a group the first one wins (sys.path
+            order, like `importlib.metadata` resolves distributions).
     """
     all_entry_points: defaultdict[str, dict[str, Any]] = defaultdict(dict)
     for ep in entry_points():
-        all_entry_points[ep.group][ep.name] = ep
+        group = all_entry_points[ep.group]
+        if (existing := group.get(ep.name)) is not None:
+            logger.debug(
+                "Ignoring entry point %r (%s) in group %r: already provided by %s",
+                ep.name,
+                ep.value,
+                ep.group,
+                existing.value,
+            )
+            continue
+        group[ep.name] = ep
     return dict(all_entry_points)
+
+
+def _get_entry_point_cache() -> dict[str, dict[str, EntryPoint]]:
+    """Get or initialize the global entry point cache (treat it as read-only)."""
+    global _entry_point_cache
+    if (cache := _entry_point_cache) is not None:
+        return cache
+    with _entry_point_cache_lock:
+        if _entry_point_cache is None:
+            _entry_point_cache = _initialize_cache()
+        return _entry_point_cache
+
+
+def clear_entry_point_cache() -> None:
+    """Drop the cached entry points; the next access reads them again.
+
+    Call it after installing or removing distributions at runtime. Existing
+    registries see the new state on their next access.
+    """
+    global _entry_point_cache
+    with _entry_point_cache_lock:
+        _entry_point_cache = None
+        _dist_names.clear()
 
 
 def get_all_entry_points() -> list[EntryPoint]:
@@ -68,6 +111,8 @@ class ModuleEntryPointRegistry[T = Any]:
         """
         self.module = module
         self._cache: dict[str, list[EntryPoint]] | None = None
+        # The global cache the module view was built from (rebuilt after a refresh)
+        self._source: dict[str, dict[str, EntryPoint]] | None = None
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.module!r})"
@@ -75,7 +120,7 @@ class ModuleEntryPointRegistry[T = Any]:
     @property
     def cache(self) -> dict[str, list[EntryPoint]]:
         """Get the module-specific cache of entry points."""
-        if self._cache is None:
+        if self._cache is None or self._source is not _get_entry_point_cache():
             self._build_cache()
         assert self._cache is not None
         return self._cache
@@ -98,14 +143,12 @@ class ModuleEntryPointRegistry[T = Any]:
                         result[ep.group].append(ep)
 
         self._cache = dict(result)
+        self._source = global_cache
 
     @staticmethod
     def _get_cache() -> dict[str, dict[str, EntryPoint]]:
-        """Get or initialize the global entry point cache."""
-        global _entry_point_cache
-        if _entry_point_cache is None:
-            _entry_point_cache = _initialize_cache()
-        return _entry_point_cache
+        """Get the global entry point cache (read-only)."""
+        return _get_entry_point_cache()
 
     def groups(self) -> list[str]:
         """Get all groups that contain entry points from this module."""
@@ -120,7 +163,7 @@ class ModuleEntryPointRegistry[T = Any]:
         Returns:
             List of entry points in the specified group.
         """
-        return self.cache.get(group, [])
+        return list(self.cache.get(group, []))
 
     def load_group(self, group: str) -> list[T]:
         """Load all entry points for a specific group from this module.
@@ -146,8 +189,8 @@ class ModuleEntryPointRegistry[T = Any]:
         return group in self.cache
 
     def get_all(self) -> dict[str, list[EntryPoint]]:
-        """Get all entry points organized by group."""
-        return self.cache
+        """Get all entry points organized by group (a copy)."""
+        return {group: list(eps) for group, eps in self.cache.items()}
 
     def load_all(self) -> dict[str, list[T]]:
         """Load all entry points, organized by group."""
@@ -174,37 +217,26 @@ class EntryPointRegistry[T = Any]:
             group: The entry point group to manage.
         """
         self.group = group
-        # Initialize instance cache
-        self._cache: dict[str, EntryPoint] | None = None
-        # Ensure the group exists in the global cache
-        if self.group not in self._get_cache():
-            self._get_cache()[self.group] = {}
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.group!r})"
 
     @property
-    def cache(self) -> dict[str, EntryPoint]:
-        """Get the instance cache of entry points.
+    def cache(self) -> Mapping[str, EntryPoint]:
+        """Get the cached entry points of this group (read-only).
+
+        Looked up on each access, so `clear_entry_point_cache()` reaches existing
+        registries; an unknown group is empty without being added to the cache.
 
         Returns:
-            dict: Mapping of entry point names to EntryPoint objects.
+            Mapping of entry point names to EntryPoint objects.
         """
-        if self._cache is None:
-            self._cache = self._get_cache()[self.group]
-        return self._cache
+        return self._get_cache().get(self.group, _EMPTY_GROUP)
 
     @staticmethod
     def _get_cache() -> dict[str, dict[str, EntryPoint]]:
-        """Get or initialize the global entry point cache.
-
-        Returns:
-            dict: The global cache of entry points.
-        """
-        global _entry_point_cache
-        if _entry_point_cache is None:
-            _entry_point_cache = _initialize_cache()
-        return _entry_point_cache
+        """Get the global entry point cache (read-only)."""
+        return _get_entry_point_cache()
 
     def get(self, name: str) -> EntryPoint | None:
         """Get an entry point by name.
@@ -288,9 +320,9 @@ class EntryPointRegistry[T = Any]:
         """Get all entry points as a dictionary.
 
         Returns:
-            Dictionary mapping entry point names to entry points.
+            Dictionary mapping entry point names to entry points (a copy).
         """
-        return self.cache
+        return dict(self.cache)
 
     def load_all(self) -> dict[str, T]:
         """Load all entry points.
@@ -349,6 +381,20 @@ class EntryPointRegistry[T = Any]:
         return path.parent
 
 
+def _dist_name(ep: EntryPoint) -> str | None:
+    """Return the distribution name of a cached entry point.
+
+    `Distribution.metadata` parses the METADATA file on every access, so the name
+    is kept per Distribution object (entry points of one distribution share it);
+    `clear_entry_point_cache()` drops the names too.
+    """
+    if (dist := ep.dist) is None:
+        return None
+    if (name := _dist_names.get(dist)) is None:
+        name = _dist_names[dist] = dist.metadata["Name"]
+    return name
+
+
 def available_groups() -> list[str]:
     """Get a list of all available entry point groups.
 
@@ -392,7 +438,7 @@ def filter_entry_points(
         for ep_name, ep in group_eps.items():
             # Filter by distribution if specified
             if distribution and not (
-                ep.dist and match_pattern(ep.dist.metadata["Name"], distribution)
+                (name := _dist_name(ep)) and match_pattern(name, distribution)
             ):
                 continue
 
@@ -443,7 +489,7 @@ def search_entry_points(
                 matches = True
 
             # Check distribution name
-            if include_distributions and ep.dist and query in ep.dist.metadata["Name"].lower():
+            if include_distributions and (name := _dist_name(ep)) and query in name.lower():
                 matches = True
 
             if matches or group_matches:
@@ -461,15 +507,13 @@ def list_distributions() -> set[str]:
     Returns:
         Set of distribution names
     """
-    distributions = set()
     cache = EntryPointRegistry._get_cache()
-
-    for group_eps in cache.values():
-        for ep in group_eps.values():
-            if ep.dist:
-                distributions.add(ep.dist.metadata["Name"])
-
-    return distributions
+    return {
+        name
+        for group_eps in cache.values()
+        for ep in group_eps.values()
+        if (name := _dist_name(ep))
+    }
 
 
 if __name__ == "__main__":

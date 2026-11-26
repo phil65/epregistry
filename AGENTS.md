@@ -10,12 +10,17 @@ helpers, and package-name <-> distribution-name conversion. It is used by other 
 ## Architecture
 
 - `src/epregistry/epregistry.py`: entry point registries.
-  - `_initialize_cache()` reads *all* entry points once into the module-global
-    `_entry_point_cache` (`{group: {name: EntryPoint}}`); every registry and helper shares it.
+  - `_get_entry_point_cache()` builds the module-global `_entry_point_cache`
+    (`{group: {name: EntryPoint}}`, first of same-named entry points wins) once, under a lock
+    (double-checked); every registry and helper shares it and treats it as read-only.
+    `clear_entry_point_cache()` drops it (and the per-Distribution name cache `_dist_names`
+    used by the search/filter helpers).
   - `EntryPointRegistry[T]`: view on one group (`get`, `load`, `__getitem__`, `names`,
-    `get_all`, `load_all`, `get_metadata`, `get_extension_point_dir`).
+    `get_all`, `load_all`, `get_metadata`, `get_extension_point_dir`). Looks the group up
+    on each access (an unknown group is empty and never added); `get_all()` returns a copy.
   - `ModuleEntryPointRegistry[T]`: view on all entry points whose `ep.module` equals the
-    given module or starts with `"<module>."`, grouped by group (builds its own per-instance cache).
+    given module or starts with `"<module>."`, grouped by group (per-instance cache, rebuilt
+    when the global cache was refreshed; `get_all`/`get_group` return copies).
   - Free functions: `available_groups`, `filter_entry_points` (fnmatch wildcards,
     case-insensitive), `search_entry_points` (substring), `list_distributions`,
     `get_all_entry_points`.
@@ -24,9 +29,15 @@ helpers, and package-name <-> distribution-name conversion. It is used by other 
   - `get_packages_distributions()` (cached) also adds packages of `.pth`-based editable
     installs (uv_build editables only ship a `.pth` file) via `_editable_packages()`.
   - Normalized lookup maps (`_get_normalized_pkg_dist_map`, `_get_normalized_dist_pkg_map`)
-    lowercase, map `-` to `_` and strip leading underscores.
+    lowercase and map `-` to `_`; leading underscores are stripped only for matching, the
+    returned package names are the real (importable) ones.
+  - Cached results are read-only (`MappingProxyType`, tuples, `frozenset`) or copies, so
+    callers can't corrupt the caches.
   - `package_to_distribution(s)`, `distribution_to_package(s)` (`fallback=True` returns a
-    normalized guess instead of `None`), `clear_caches()`, `get_cache_info()`.
+    normalized guess instead of `None`), `clear_caches()` (also clears the entry point
+    cache), `get_cache_info()`. `distribution_to_package` picks deterministically
+    (`_primary_package`: the package named like the distribution, else no leading
+    underscore, shortest, alphabetical).
 - `src/epregistry/log.py`: `get_logger()` helper (currently not used internally).
 - `src/epregistry/__init__.py`: public re-exports and `__all__`; `__version__` comes from
   installed metadata.

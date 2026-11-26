@@ -183,3 +183,13 @@ def test_module_registry_behavior():
     # Should find pytest_cov plugin
     assert "pytest11" in plugin_eps
     assert any(ep.module == "pytest_cov.plugin" for ep in plugin_eps["pytest11"])
+
+
+def test_module_registry_get_all_returns_copy():
+    registry = ModuleEntryPointRegistry[Any](PYTEST_MODULE)
+    groups = registry.get_all()
+    groups["BOGUS"] = []
+    for eps in groups.values():
+        eps.append(None)  # ty: ignore[invalid-argument-type]
+    assert "BOGUS" not in registry.get_all()
+    assert all(ep is not None for eps in registry.get_all().values() for ep in eps)

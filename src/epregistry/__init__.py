@@ -25,6 +25,7 @@ from epregistry.epregistry import (
     search_entry_points,
     list_distributions,
     get_all_entry_points,
+    clear_entry_point_cache,
 )
 from epregistry.package_to_distribution import (
     package_to_distributions,
@@ -32,6 +33,7 @@ from epregistry.package_to_distribution import (
     distribution_to_packages,
     distribution_to_package,
     get_packages_distributions,
+    clear_caches,
 )
 
 
@@ -41,6 +43,8 @@ __all__ = [
     "ModuleEntryPointRegistry",
     "__version__",
     "available_groups",
+    "clear_caches",
+    "clear_entry_point_cache",
     "distribution_to_package",
     "distribution_to_packages",
     "filter_entry_points",

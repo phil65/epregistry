@@ -137,3 +137,89 @@ def test_multiple_registries_same_cache():
     registry1 = EntryPointRegistry[Any](CONSOLE_SCRIPTS)
     registry2 = EntryPointRegistry[Any](CONSOLE_SCRIPTS)
     assert registry1._get_cache() is registry2._get_cache()
+
+
+def test_unknown_group_does_not_create_phantom_group():
+    from epregistry import available_groups, filter_entry_points
+
+    registry = EntryPointRegistry[Any]("no.such.group.phantom")
+    assert len(registry) == 0
+    assert registry.names() == []
+    assert "no.such.group.phantom" not in available_groups()
+    assert "no.such.group.phantom" not in filter_entry_points(group="no.such.*")
+
+
+def test_get_all_returns_copy():
+    registry = EntryPointRegistry[Any](CONSOLE_SCRIPTS)
+    eps = registry.get_all()
+    eps["BOGUS"] = None  # ty: ignore[invalid-assignment]
+    assert "BOGUS" not in registry.get_all()
+    assert "BOGUS" not in EntryPointRegistry[Any](CONSOLE_SCRIPTS)
+
+
+def test_clear_entry_point_cache_refreshes_registries(monkeypatch: pytest.MonkeyPatch):
+    from importlib.metadata import EntryPoint
+
+    from epregistry import clear_entry_point_cache, epregistry as mod
+
+    registry = EntryPointRegistry[Any]("epregistry.test.refresh")
+    assert len(registry) == 0
+    ep = EntryPoint(name="late", value="os:getcwd", group="epregistry.test.refresh")
+    monkeypatch.setattr(mod, "entry_points", lambda: [ep])
+    clear_entry_point_cache()
+    try:
+        assert registry.names() == ["late"]
+        assert "epregistry.test.refresh" in mod.available_groups()
+    finally:
+        monkeypatch.undo()
+        clear_entry_point_cache()
+    assert len(registry) == 0
+
+
+def test_cache_initialized_once_across_threads(monkeypatch: pytest.MonkeyPatch):
+    import threading
+    import time
+
+    from epregistry import clear_entry_point_cache, epregistry as mod
+
+    calls = 0
+
+    def slow_entry_points():
+        nonlocal calls
+        calls += 1
+        time.sleep(0.05)
+        return []
+
+    monkeypatch.setattr(mod, "entry_points", slow_entry_points)
+    clear_entry_point_cache()
+    results: list[object] = []
+    try:
+        threads = [
+            threading.Thread(target=lambda: results.append(mod._get_entry_point_cache()))
+            for _ in range(8)
+        ]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        assert calls == 1
+        assert all(r is results[0] for r in results)
+    finally:
+        monkeypatch.undo()
+        clear_entry_point_cache()
+
+
+def test_same_name_keeps_first_entry_point(monkeypatch: pytest.MonkeyPatch):
+    from importlib.metadata import EntryPoint
+
+    from epregistry import clear_entry_point_cache, epregistry as mod
+
+    first = EntryPoint(name="dup", value="os:getcwd", group="epregistry.test.dup")
+    second = EntryPoint(name="dup", value="os:getpid", group="epregistry.test.dup")
+    monkeypatch.setattr(mod, "entry_points", lambda: [first, second])
+    clear_entry_point_cache()
+    try:
+        assert EntryPointRegistry[Any]("epregistry.test.dup")["dup"] is first
+    finally:
+        monkeypatch.undo()
+        clear_entry_point_cache()
