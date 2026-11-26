@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import pytest
 
 from epregistry.package_to_distribution import (

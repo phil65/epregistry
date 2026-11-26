@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from functools import cache, lru_cache
 from importlib.metadata import distributions, packages_distributions
 from pathlib import Path

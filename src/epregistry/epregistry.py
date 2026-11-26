@@ -1,7 +1,5 @@
 """Module for managing entry points through a registry system."""
 
-from __future__ import annotations
-
 from collections import defaultdict
 from importlib.metadata import entry_points
 import logging
